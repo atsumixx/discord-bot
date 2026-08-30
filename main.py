@@ -126,7 +126,7 @@ class ExplorationSelect(discord.ui.Select):
     view: OrderView = self.view
     view.selected_exploration = self.values
     await interaction.followup.send(
-        f"Updated exploration choices: {', ' + ''.join(self.values) if self.values else 'None'}",
+        f"Updated exploration choices: {', '.join(self.values) if self.values else 'None'}",
         ephemeral=True,
     )
 
@@ -178,7 +178,7 @@ class MaintenanceSelect(discord.ui.Select):
     view: OrderView = self.view
     view.selected_maintenance = self.values
     await interaction.followup.send(
-        f"Updated maintenance choices: {', ' + ''.join(self.values) if self.values else 'None'}",
+        f"Updated maintenance choices: {', '.join(self.values) if self.values else 'None'}",
         ephemeral=True,
     )
 
@@ -191,7 +191,6 @@ class OrderView(discord.ui.View):
     self.selected_exploration = []
     self.selected_maintenance = []
 
-    # Add the dropdowns to the view
     self.add_item(ExplorationSelect())
     self.add_item(MaintenanceSelect())
 
@@ -204,16 +203,55 @@ class OrderView(discord.ui.View):
   async def submit_order(
       self, interaction: discord.Interaction, button: discord.ui.Button
   ):
+    # Instantly defer to prevent the 3-second timeout error
     await interaction.response.defer(ephemeral=True)
 
     if not self.selected_exploration and not self.selected_maintenance:
       await interaction.followup.send(
-          "⚠️ Please select at least one service from the dropdowns before submitting!",
+          "⚠️ Please select at least one service from the dropdowns before"
+          " submitting!",
           ephemeral=True,
       )
       return
 
-    summary = "**📋 Atsumi Piloting Services - Order Summary**\n"
+    # Calculate total price dynamically
+    total_price = 0.0
+
+    exploration_prices = {
+        "Mondstadt": 7.0,
+        "Liyue": 10.0,
+        "Inazuma": 25.0,
+        "Sumeru": 90.0,
+        "Fontaine": 40.0,
+        "Natlan": 45.0,
+        "Snezhnaya": 40.0,
+        "Dragonspine": 8.0,
+        "Windrise Peak": 5.0,
+        "Temple of Silence": 10.0,
+        "Chasm": 15.0,
+        "Chenyu Vale": 15.0,
+        "Enkanomiya": 15.0,
+        "Sea of Bygone Eras": 15.0,
+        "Ancient Sacred Mountain": 15.0,
+        "Frost Moon": 10.0,
+    }
+
+    maintenance_prices = {
+        "Character Ascend ($1.50)": 1.50,
+        "Weapon Upgrade ($1.50)": 1.50,
+        "Artifacts Building ($1.50)": 1.50,
+        "Talent Building 1-6 ($0.50)": 0.50,
+        "Talent Building 7-10 ($2.00)": 2.00,
+    }
+
+    for item in self.selected_exploration:
+      total_price += exploration_prices.get(item, 0.0)
+
+    for item in self.selected_maintenance:
+      total_price += maintenance_prices.get(item, 0.0)
+
+    # Build the order summary
+    summary = f"📋 **New Commission Order from {interaction.user.mention}**\n"
     if self.selected_exploration:
       summary += (
           f"\n🗺️ **Exploration:**\n- "
@@ -227,12 +265,40 @@ class OrderView(discord.ui.View):
           + "\n"
       )
 
+    summary += f"\n💰 **Estimated Total:** `${total_price:.2f}`"
     summary += (
-        "\n🚀 *Your package has been successfully bundled and sent to the pilot"
-        " board!*"
+        "\n💳 *Please coordinate payment with management here before piloting"
+        " begins.*"
     )
 
-    await interaction.followup.send(summary, ephemeral=True)
+    # Create a private thread right inside the channel where the order was placed
+    thread_name = f"order-{interaction.user.name}"
+
+    try:
+      ticket_thread = await interaction.channel.create_thread(
+          name=thread_name,
+          type=discord.ChannelType.private_thread,
+          invitable=False,
+      )
+
+      # Add the user to the private thread so they can view and chat in it
+      await ticket_thread.add_user(interaction.user)
+
+      # Send the itemized summary and total inside the private thread
+      await ticket_thread.send(summary)
+
+      # Confirm privately to the user where their thread was created
+      await interaction.followup.send(
+          f"✅ Your order has been submitted! Head over to your private thread"
+          f" {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
+          ephemeral=True,
+      )
+    except Exception as e:
+      await interaction.followup.send(
+          f"⚠️ Failed to create order thread. Make sure the bot has 'Create"
+          f" Private Threads' permissions! Error: {e}",
+          ephemeral=True,
+      )
 
 
 # ----------------- BOT COMMANDS -----------------
