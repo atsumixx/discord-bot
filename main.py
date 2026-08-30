@@ -1,66 +1,262 @@
+import os
+import threading
+from flask import Flask
 import discord
 from discord.ext import commands
-from flask import Flask
-from threading import Thread
-import os
-# ==========================================
-# --- 1. WEB SERVER SETUP (FOR RENDER) ---
-# ==========================================
-app = Flask(__name__)
 
-@app.route('/')
+# ----------------- FLASK SERVER (Keep-Alive for Render) -----------------
+app = Flask("")
+
+
+@app.route("/")
 def home():
-    return "Agency Bot is online and running!"
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-# Start the web server in a background thread
-Thread(target=run).start()
+  return "Hello, World! Bot is running."
 
 
-# ==========================================
-# --- 2. DISCORD BOT SETUP ---
-# ==========================================
+def run_flask():
+  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-# This creates the dropdown menu
+
+def keep_alive():
+  t = threading.Thread(target=run_flask)
+  t.start()
+
+
+# ----------------- DISCORD BOT SETUP -----------------
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+# ----------------- DROPDOWN SELECT MENUS -----------------
 class ExplorationSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Mondstadt", description="$7", value="mondstadt_7"),
-            discord.SelectOption(label="Liyue", description="$10", value="liyue_10"),
-            discord.SelectOption(label="Inazuma", description="$25", value="inazuma_25"),
-            discord.SelectOption(label="Sumero (with desert)", description="$90", value="sumero_90"),
-        ]
-        super().__init__(placeholder="Choose an exploration area...", options=options)
 
-    # This runs when a client picks an option
-    async def callback(self, interaction: discord.Interaction):
-        service, price = self.values[0].split('_')
-        await interaction.response.send_message(
-            f"Selected {service.title()} for ${price}. Sending to pilot board...", 
-            ephemeral=True
-        )
+  def __init__(self):
+    options = [
+        # Main Regions
+        discord.SelectOption(
+            label="Mondstadt", description="$7", emoji="🍃", value="Mondstadt"
+        ),
+        discord.SelectOption(
+            label="Liyue", description="$10", emoji="🔶", value="Liyue"
+        ),
+        discord.SelectOption(
+            label="Inazuma", description="$25", emoji="⚡", value="Inazuma"
+        ),
+        discord.SelectOption(
+            label="Sumeru (with desert)",
+            description="$90",
+            emoji="🌿",
+            value="Sumeru",
+        ),
+        discord.SelectOption(
+            label="Fontaine", description="$40", emoji="💧", value="Fontaine"
+        ),
+        discord.SelectOption(
+            label="Natlan", description="$45", emoji="🔥", value="Natlan"
+        ),
+        discord.SelectOption(
+            label="Snezhnaya (Archon/World Quest)",
+            description="$40",
+            emoji="❄️",
+            value="Snezhnaya",
+        ),
+        # Special Areas
+        discord.SelectOption(
+            label="Dragonspine",
+            description="$8",
+            emoji="🏔️",
+            value="Dragonspine",
+        ),
+        discord.SelectOption(
+            label="Windrise Peak",
+            description="$5",
+            emoji="🌬️",
+            value="Windrise Peak",
+        ),
+        discord.SelectOption(
+            label="Temple of Silence",
+            description="$10",
+            emoji="🏛️",
+            value="Temple of Silence",
+        ),
+        discord.SelectOption(
+            label="Chasm (with underground)",
+            description="$15",
+            emoji="🕳️",
+            value="Chasm",
+        ),
+        discord.SelectOption(
+            label="Chenyu Vale",
+            description="$15",
+            emoji="🍵",
+            value="Chenyu Vale",
+        ),
+        discord.SelectOption(
+            label="Enkanomiya",
+            description="$15",
+            emoji="💠",
+            value="Enkanomiya",
+        ),
+        discord.SelectOption(
+            label="Sea of Bygone Eras",
+            description="$15",
+            emoji="🐚",
+            value="Sea of Bygone Eras",
+        ),
+        discord.SelectOption(
+            label="Ancient Sacred Mountain",
+            description="$15",
+            emoji="⛰️",
+            value="Ancient Sacred Mountain",
+        ),
+        discord.SelectOption(
+            label="Frost Moon", description="$10", emoji="🌙", value="Frost Moon"
+        ),
+    ]
+    super().__init__(
+        placeholder="Select Exploration Services...",
+        min_values=0,
+        max_values=len(options),
+        options=options,
+    )
 
-# This packages the dropdown into a View that Discord can display
-class CommissionView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(ExplorationSelect())
+  async def callback(self, interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    view: OrderView = self.view
+    view.selected_exploration = self.values
+    await interaction.followup.send(
+        f"Updated exploration choices: {', ' + ''.join(self.values) if self.values else 'None'}",
+        ephemeral=True,
+    )
 
-# This sets up the bot itself
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
+class MaintenanceSelect(discord.ui.Select):
+
+  def __init__(self):
+    options = [
+        discord.SelectOption(
+            label="Character Ascend",
+            description="$1.50 per ascension",
+            emoji="📈",
+            value="Character Ascend ($1.50)",
+        ),
+        discord.SelectOption(
+            label="Weapon Upgrade",
+            description="$1.50 per item",
+            emoji="⚔️",
+            value="Weapon Upgrade ($1.50)",
+        ),
+        discord.SelectOption(
+            label="Artifacts Building (Resin Burn)",
+            description="$1.50",
+            emoji="🏺",
+            value="Artifacts Building ($1.50)",
+        ),
+        discord.SelectOption(
+            label="Talent Building (1-6)",
+            description="$0.50",
+            emoji="📜",
+            value="Talent Building 1-6 ($0.50)",
+        ),
+        discord.SelectOption(
+            label="Talent Building (7-10)",
+            description="$2.00",
+            emoji="✨",
+            value="Talent Building 7-10 ($2.00)",
+        ),
+    ]
+    super().__init__(
+        placeholder="Select Character Maintenance...",
+        min_values=0,
+        max_values=len(options),
+        options=options,
+    )
+
+  async def callback(self, interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    view: OrderView = self.view
+    view.selected_maintenance = self.values
+    await interaction.followup.send(
+        f"Updated maintenance choices: {', ' + ''.join(self.values) if self.values else 'None'}",
+        ephemeral=True,
+    )
+
+
+# ----------------- MAIN CART / ORDER VIEW -----------------
+class OrderView(discord.ui.View):
+
+  def __init__(self):
+    super().__init__(timeout=180)
+    self.selected_exploration = []
+    self.selected_maintenance = []
+
+    # Add the dropdowns to the view
+    self.add_item(ExplorationSelect())
+    self.add_item(MaintenanceSelect())
+
+  @discord.ui.button(
+      label="Confirm & Submit Order",
+      style=discord.ButtonStyle.green,
+      emoji="✅",
+      row=2,
+  )
+  async def submit_order(
+      self, interaction: discord.Interaction, button: discord.ui.Button
+  ):
+    await interaction.response.defer(ephemeral=True)
+
+    if not self.selected_exploration and not self.selected_maintenance:
+      await interaction.followup.send(
+          "⚠️ Please select at least one service from the dropdowns before submitting!",
+          ephemeral=True,
+      )
+      return
+
+    summary = "**📋 Atsumi Piloting Services - Order Summary**\n"
+    if self.selected_exploration:
+      summary += (
+          f"\n🗺️ **Exploration:**\n- "
+          + "\n- ".join(self.selected_exploration)
+          + "\n"
+      )
+    if self.selected_maintenance:
+      summary += (
+          f"\n⚔️ **Character Maintenance:**\n- "
+          + "\n- ".join(self.selected_maintenance)
+          + "\n"
+      )
+
+    summary += (
+        "\n🚀 *Your package has been successfully bundled and sent to the pilot"
+        " board!*"
+    )
+
+    await interaction.followup.send(summary, ephemeral=True)
+
+
+# ----------------- BOT COMMANDS -----------------
 @bot.event
 async def on_ready():
-    print(f"Bot is online and logged in as {bot.user}")
+  print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+  print("Bot is online!")
 
-# The command you type in Discord to spawn the menu
+
 @bot.command()
 async def order(ctx):
-    await ctx.send("Configure your commission below:", view=CommissionView())
+  view = OrderView()
+  await ctx.send(
+      "**Welcome to Atsumi Piloting Services!**\nCustomize your commission"
+      " bundle below by selecting options from the menus, then click confirm.",
+      view=view,
+  )
 
-# Run the bot
-# Read the hidden token from Render's environment
-token = os.getenv("DISCORD_TOKEN")
-bot.run(token)
+
+# ----------------- RUN EVERYTHING -----------------
+if __name__ == "__main__":
+  keep_alive()
+  TOKEN = os.getenv("DISCORD_TOKEN")
+  if TOKEN:
+    bot.run(TOKEN)
+  else:
+    print("ERROR: DISCORD_TOKEN environment variable not found!")
