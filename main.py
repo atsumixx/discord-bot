@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from flask import Flask
 from threading import Thread
-
+import os
 # ==========================================
 # --- 1. WEB SERVER SETUP (FOR RENDER) ---
 # ==========================================
@@ -61,4 +61,6 @@ async def order(ctx):
     await ctx.send("Configure your commission below:", view=CommissionView())
 
 # Run the bot
-bot.run("YOUR_BOT_TOKEN_HERE")
+# Read the hidden token from Render's environment
+token = os.getenv("DISCORD_TOKEN")
+bot.run(token)
