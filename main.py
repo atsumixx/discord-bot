@@ -1,7 +1,29 @@
 import discord
 from discord.ext import commands
+from flask import Flask
+from threading import Thread
 
-# 1. This creates the dropdown menu
+# ==========================================
+# --- 1. WEB SERVER SETUP (FOR RENDER) ---
+# ==========================================
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Agency Bot is online and running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+# Start the web server in a background thread
+Thread(target=run).start()
+
+
+# ==========================================
+# --- 2. DISCORD BOT SETUP ---
+# ==========================================
+
+# This creates the dropdown menu
 class ExplorationSelect(discord.ui.Select):
     def __init__(self):
         options = [
@@ -20,23 +42,23 @@ class ExplorationSelect(discord.ui.Select):
             ephemeral=True
         )
 
-# 2. This packages the dropdown into a View that Discord can display
+# This packages the dropdown into a View that Discord can display
 class CommissionView(discord.ui.View):
     def __init__(self):
         super().__init__()
         self.add_item(ExplorationSelect())
 
-# 3. This sets up the bot itself
+# This sets up the bot itself
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 @bot.event
 async def on_ready():
     print(f"Bot is online and logged in as {bot.user}")
 
-# 4. The command you type in Discord to spawn the menu
+# The command you type in Discord to spawn the menu
 @bot.command()
 async def order(ctx):
     await ctx.send("Configure your commission below:", view=CommissionView())
 
-# 5. Run the bot
+# Run the bot
 bot.run("YOUR_BOT_TOKEN_HERE")
