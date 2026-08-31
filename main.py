@@ -36,83 +36,163 @@ class ExplorationSelect(discord.ui.Select):
 
   def __init__(self):
     options = [
+        # Mondstadt
         discord.SelectOption(
-            label="Mondstadt", description="$7", emoji="🍃", value="Mondstadt"
+            label="Mondstadt (100%)",
+            description="$7.00",
+            emoji="🍃",
+            value="Mondstadt (100%)",
         ),
         discord.SelectOption(
-            label="Liyue", description="$10", emoji="🔶", value="Liyue"
+            label="Mondstadt (>50% Progress)",
+            description="$4.55 (35% OFF)",
+            emoji="🍃",
+            value="Mondstadt (>50%)",
+        ),
+        # Liyue
+        discord.SelectOption(
+            label="Liyue (100%)",
+            description="$10.00",
+            emoji="🔶",
+            value="Liyue (100%)",
         ),
         discord.SelectOption(
-            label="Inazuma", description="$25", emoji="⚡", value="Inazuma"
+            label="Liyue (>50% Progress)",
+            description="$6.50 (35% OFF)",
+            emoji="🔶",
+            value="Liyue (>50%)",
+        ),
+        # Inazuma
+        discord.SelectOption(
+            label="Inazuma (100%)",
+            description="$25.00",
+            emoji="⚡",
+            value="Inazuma (100%)",
         ),
         discord.SelectOption(
-            label="Sumeru (with desert)",
-            description="$90",
+            label="Inazuma (>50% Progress)",
+            description="$16.25 (35% OFF)",
+            emoji="⚡",
+            value="Inazuma (>50%)",
+        ),
+        # Sumeru
+        discord.SelectOption(
+            label="Sumeru with Desert (100%)",
+            description="$90.00",
             emoji="🌿",
-            value="Sumeru",
+            value="Sumeru (100%)",
         ),
         discord.SelectOption(
-            label="Fontaine", description="$40", emoji="💧", value="Fontaine"
+            label="Sumeru with Desert (>50% Progress)",
+            description="$58.50 (35% OFF)",
+            emoji="🌿",
+            value="Sumeru (>50%)",
+        ),
+        # Fontaine
+        discord.SelectOption(
+            label="Fontaine (100%)",
+            description="$40.00",
+            emoji="💧",
+            value="Fontaine (100%)",
         ),
         discord.SelectOption(
-            label="Natlan", description="$45", emoji="🔥", value="Natlan"
+            label="Fontaine (>50% Progress)",
+            description="$26.00 (35% OFF)",
+            emoji="💧",
+            value="Fontaine (>50%)",
+        ),
+        # Natlan
+        discord.SelectOption(
+            label="Natlan (100%)",
+            description="$45.00",
+            emoji="🔥",
+            value="Natlan (100%)",
         ),
         discord.SelectOption(
-            label="Snezhnaya (Archon/World Quest)",
-            description="$40",
+            label="Natlan (>50% Progress)",
+            description="$29.25 (35% OFF)",
+            emoji="🔥",
+            value="Natlan (>50%)",
+        ),
+        # Snezhnaya
+        discord.SelectOption(
+            label="Snezhnaya Archon/World Quest (100%)",
+            description="$40.00",
             emoji="❄️",
-            value="Snezhnaya",
+            value="Snezhnaya (100%)",
         ),
         discord.SelectOption(
-            label="Dragonspine",
-            description="$8",
+            label="Snezhnaya (>50% Progress)",
+            description="$26.00 (35% OFF)",
+            emoji="❄️",
+            value="Snezhnaya (>50%)",
+        ),
+        # Special Areas
+        discord.SelectOption(
+            label="Dragonspine (100%)",
+            description="$8.00",
             emoji="🏔️",
-            value="Dragonspine",
+            value="Dragonspine (100%)",
         ),
         discord.SelectOption(
-            label="Windrise Peak",
-            description="$5",
-            emoji="🌬️",
-            value="Windrise Peak",
+            label="Dragonspine (>50% Progress)",
+            description="$5.20 (35% OFF)",
+            emoji="🏔️",
+            value="Dragonspine (>50%)",
         ),
         discord.SelectOption(
-            label="Temple of Silence",
-            description="$10",
-            emoji="🏛️",
-            value="Temple of Silence",
-        ),
-        discord.SelectOption(
-            label="Chasm (with underground)",
-            description="$15",
+            label="Chasm with underground (100%)",
+            description="$15.00",
             emoji="🕳️",
-            value="Chasm",
+            value="Chasm (100%)",
         ),
         discord.SelectOption(
-            label="Chenyu Vale",
-            description="$15",
+            label="Chasm (>50% Progress)",
+            description="$9.75 (35% OFF)",
+            emoji="🕳️",
+            value="Chasm (>50%)",
+        ),
+        discord.SelectOption(
+            label="Chenyu Vale (100%)",
+            description="$15.00",
             emoji="🍵",
-            value="Chenyu Vale",
+            value="Chenyu Vale (100%)",
         ),
         discord.SelectOption(
-            label="Enkanomiya",
-            description="$15",
+            label="Chenyu Vale (>50% Progress)",
+            description="$9.75 (35% OFF)",
+            emoji="🍵",
+            value="Chenyu Vale (>50%)",
+        ),
+        discord.SelectOption(
+            label="Enkanomiya (100%)",
+            description="$15.00",
             emoji="💠",
-            value="Enkanomiya",
+            value="Enkanomiya (100%)",
         ),
         discord.SelectOption(
-            label="Sea of Bygone Eras",
-            description="$15",
+            label="Enkanomiya (>50% Progress)",
+            description="$9.75 (35% OFF)",
+            emoji="💠",
+            value="Enkanomiya (>50%)",
+        ),
+        discord.SelectOption(
+            label="Sea of Bygone Eras (100%)",
+            description="$15.00",
             emoji="🐚",
-            value="Sea of Bygone Eras",
+            value="Sea of Bygone Eras (100%)",
         ),
         discord.SelectOption(
-            label="Ancient Sacred Mountain",
-            description="$15",
+            label="Sea of Bygone Eras (>50% Progress)",
+            description="$9.75 (35% OFF)",
+            emoji="🐚",
+            value="Sea of Bygone Eras (>50%)",
+        ),
+        discord.SelectOption(
+            label="Ancient Sacred Mountain (100%)",
+            description="$15.00",
             emoji="⛰️",
-            value="Ancient Sacred Mountain",
-        ),
-        discord.SelectOption(
-            label="Frost Moon", description="$10", emoji="🌙", value="Frost Moon"
+            value="Ancient Sacred Mountain (100%)",
         ),
     ]
     super().__init__(
@@ -368,23 +448,35 @@ class OrderView(discord.ui.View):
 
     total_price = self.total_custom_price
 
+    # Price mapping (100% full prices vs >50% discounted prices)
     exploration_prices = {
-        "Mondstadt": 7.0,
-        "Liyue": 10.0,
-        "Inazuma": 25.0,
-        "Sumeru": 90.0,
-        "Fontaine": 40.0,
-        "Natlan": 45.0,
-        "Snezhnaya": 40.0,
-        "Dragonspine": 8.0,
-        "Windrise Peak": 5.0,
-        "Temple of Silence": 10.0,
-        "Chasm": 15.0,
-        "Chenyu Vale": 15.0,
-        "Enkanomiya": 15.0,
-        "Sea of Bygone Eras": 15.0,
-        "Ancient Sacred Mountain": 15.0,
-        "Frost Moon": 10.0,
+        # 100% Rates
+        "Mondstadt (100%)": 7.00,
+        "Liyue (100%)": 10.00,
+        "Inazuma (100%)": 25.00,
+        "Sumeru (100%)": 90.00,
+        "Fontaine (100%)": 40.00,
+        "Natlan (100%)": 45.00,
+        "Snezhnaya (100%)": 40.00,
+        "Dragonspine (100%)": 8.00,
+        "Chasm (100%)": 15.00,
+        "Chenyu Vale (100%)": 15.00,
+        "Enkanomiya (100%)": 15.00,
+        "Sea of Bygone Eras (100%)": 15.00,
+        "Ancient Sacred Mountain (100%)": 15.00,
+        # >50% Progress Rates (35% OFF)
+        "Mondstadt (>50%)": 4.55,
+        "Liyue (>50%)": 6.50,
+        "Inazuma (>50%)": 16.25,
+        "Sumeru (>50%)": 58.50,
+        "Fontaine (>50%)": 26.00,
+        "Natlan (>50%)": 29.25,
+        "Snezhnaya (>50%)": 26.00,
+        "Dragonspine (>50%)": 5.20,
+        "Chasm (>50%)": 9.75,
+        "Chenyu Vale (>50%)": 9.75,
+        "Enkanomiya (>50%)": 9.75,
+        "Sea of Bygone Eras (>50%)": 9.75,
     }
 
     maintenance_prices = {
@@ -488,13 +580,11 @@ async def on_ready():
 
 @bot.command()
 async def order(ctx):
-  # Deletes the user's "!order" command message
   try:
     await ctx.message.delete()
   except discord.Forbidden:
     pass
 
-  # Deletes any existing active order message for this user in this channel
   user_key = (ctx.author.id, ctx.channel.id)
   if user_key in active_order_messages:
     old_msg = active_order_messages[user_key]
