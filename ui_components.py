@@ -158,9 +158,12 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
                 avatar_url=client_avatar
             )
 
+            # Clean payment instruction text for finished orders
+            clean_summary = self.summary_text.replace("\n💳 *Please coordinate payment with management here before piloting begins.*", "")
+
             embed = discord.Embed(
                 title="✨ Commission Details & Summary",
-                description=self.summary_text,
+                description=clean_summary,
                 color=discord.Color.from_rgb(255, 182, 193)
             )
             embed.set_footer(text="Atsumi Piloting Services • Deal Completed Successfully")
@@ -203,8 +206,10 @@ class JobBoardView(discord.ui.View):
         for child in self.children:
             if getattr(child, "custom_id", "") == "resolve_btn":
                 child.disabled = False
+        
         current_content = interaction.message.content
-        new_msg = current_content.replace("🔴 **Status:** Open (No Pilot)", f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})")
+        new_msg = current_content.replace("🔴 **Status:** Open", "🟡 **Status:** In Progress")
+        new_msg = new_msg.replace("✈️ **Pilot:** Unassigned", f"✈️ **Pilot:** {self.pilot.mention}")
         await interaction.response.edit_message(content=new_msg, view=self)
 
     @discord.ui.button(label="Mark Resolved", style=discord.ButtonStyle.success, emoji="✅", disabled=True, custom_id="resolve_btn")
@@ -215,7 +220,7 @@ class JobBoardView(discord.ui.View):
         button.disabled = True
         button.label = "Resolved"
         current_content = interaction.message.content
-        new_msg = current_content.replace(f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})", f"🟢 **Status:** Resolved (Completed by {self.pilot.mention})")
+        new_msg = current_content.replace("🟡 **Status:** In Progress", "🟢 **Status:** Resolved")
         await interaction.response.edit_message(content=new_msg, view=self)
 
 
@@ -331,17 +336,20 @@ class OrderView(discord.ui.View):
 
                 if self.job_message:
                     old_content = self.job_message.content
-                    status_line = "🔴 **Status:** Open (No Pilot)"
+                    status_line = "🔴 **Status:** Open"
+                    pilot_line = "✈️ **Pilot:** Unassigned"
                     for line in old_content.split('\n'):
                         if "**Status:**" in line:
                             status_line = line
-                            break
+                        elif "**Pilot:**" in line:
+                            pilot_line = line
                     
                     job_board_msg = (
                         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"🆕 **Job Updated!**\n"
                         f"{status_line}\n"
                         f"👤 **Client:** {interaction.user.mention}\n"
+                        f"{pilot_line}\n"
                     )
                     if self.selected_exploration:
                         job_board_msg += f"🗺️ **Exploration:** {', '.join(self.selected_exploration)}\n"
@@ -376,8 +384,9 @@ class OrderView(discord.ui.View):
                 job_board_msg = (
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"🆕 **New Job Available!**\n"
-                    f"🔴 **Status:** Open (No Pilot)\n"
+                    f"🔴 **Status:** Open\n"
                     f"👤 **Client:** {interaction.user.mention}\n"
+                    f"✈️ **Pilot:** Unassigned\n"
                 )
                 if self.selected_exploration:
                     job_board_msg += f"🗺️ **Exploration:** {', '.join(self.selected_exploration)}\n"
