@@ -153,7 +153,7 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
             client_avatar = client_user.display_avatar.url
 
             await webhook.send(
-                content=f"vouch !! {self.feedback.value}",
+                content=self.feedback.value,
                 username=client_name,
                 avatar_url=client_avatar
             )
