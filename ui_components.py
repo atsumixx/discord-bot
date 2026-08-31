@@ -122,7 +122,7 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
 
-# Client Feedback Modal when closing/resolving the deal
+# Client Feedback Modal (Posts via Webhook with Client Profile Picture & Paimon Embed Details)
 class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
     feedback = discord.ui.TextInput(
         label="Service & Pilot Feedback",
@@ -143,27 +143,42 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
         guild = interaction.guild
         done_channel = discord.utils.get(guild.text_channels, name="done-deal✔️")
         
-        # Format the final success post for the done-deal channel
-        completion_embed_msg = (
-            "✅ **COMPLETED COMMISSION / DEAL DONE**\n"
-            f"{self.summary_text}\n\n"
-            f"💬 **Client Review:** *\"{self.feedback.value}\"*\n"
-            f"👤 **Client:** {interaction.user.mention}"
-        )
-
         if done_channel:
-            # 1. Post to done-deal channel
-            await done_channel.send(completion_embed_msg)
+            # Find or create a webhook in the done-deal channel to mimic the client profile picture
+            webhooks = await done_channel.webhooks()
+            webhook = discord.utils.get(webhooks, name="PaimonLogger")
+            if not webhook:
+                webhook = await done_channel.create_webhook(name="PaimonLogger")
+
+            client_user = interaction.user
+            client_name = client_user.display_name
+            client_avatar = client_user.display_avatar.url
+
+            # 1. Post the client review using their profile picture via Webhook
+            await webhook.send(
+                content=f"vouch !! {self.feedback.value}",
+                username=client_name,
+                avatar_url=client_avatar
+            )
+
+            # 2. Post Paimon's embed right below it containing the order breakdown details
+            embed = discord.Embed(
+                title="✨ Commission Details & Summary",
+                description=self.summary_text,
+                color=discord.Color.from_rgb(255, 182, 193) # Soft pink/paimon vibe
+            )
+            embed.set_footer(text="Atsumi Piloting Services • Deal Completed Successfully")
             
-            # 2. Move thread to the done-deal channel (Discord API allows moving threads under text channels)
+            await done_channel.send(embed=embed)
+            
+            # 3. Archive and lock the thread
             if isinstance(interaction.channel, discord.Thread):
                 try:
-                    # Move thread context / parent channel if supported, or lock/archive it
                     await interaction.channel.edit(name=f"done-{interaction.channel.name}", archived=True, locked=True)
                 except Exception:
                     pass
 
-        # 3. Update job board message to show green resolved state
+        # 4. Update job board message
         if self.job_message:
             try:
                 new_job_content = self.job_message.content.replace("🟡 **Status:** In Progress", "🟢 **Status:** Completed & Reviewed")
@@ -171,7 +186,7 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
             except discord.NotFound:
                 pass
 
-        await interaction.followup.send("🎉 Thank you! This order has been marked as resolved, reviewed, and archived.", ephemeral=True)
+        await interaction.followup.send("🎉 Thank you! Your review has been posted in `done-deal✔️` with your profile picture, and the order is archived.", ephemeral=True)
         
         try:
             await interaction.message.delete()
@@ -237,7 +252,6 @@ class ThreadManagementView(discord.ui.View):
 
     @discord.ui.button(label="Mark Resolved & Review", style=discord.ButtonStyle.success, emoji="⭐", row=0)
     async def finish_and_review(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Trigger feedback modal for the client
         modal = ClientFeedbackModal(summary_text=self.summary_text, job_message=self.job_message)
         await interaction.response.send_modal(modal)
 
