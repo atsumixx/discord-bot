@@ -33,7 +33,6 @@ class ExplorationSelect(discord.ui.Select):
             discord.SelectOption(label="Ancient Sacred Mountain", description="$15.00", emoji="⛰️", value="Ancient Sacred Mountain (100%)"),
         ]
         
-        # PRE-SELECT PREVIOUS CHOICES
         for opt in options:
             if opt.value in default_values:
                 opt.default = True
@@ -64,7 +63,6 @@ class MaintenanceSelect(discord.ui.Select):
             discord.SelectOption(label="Talent Building (7-10)", description="$2.00", emoji="✨", value="Talent Building 7-10 ($2.00)"),
         ]
         
-        # PRE-SELECT PREVIOUS CHOICES
         for opt in options:
             if opt.value in default_values:
                 opt.default = True
@@ -183,7 +181,6 @@ class ThreadManagementView(discord.ui.View):
         super().__init__(timeout=None)
         self.job_message = job_message
         self.summary_message = None
-        # Save states for edits
         self.prev_expl = prev_expl or []
         self.prev_maint = prev_maint or []
         self.prev_custom = prev_custom or []
@@ -217,7 +214,6 @@ class OrderView(discord.ui.View):
         self.job_message = job_message
         self.summary_message = summary_message
         
-        # Load initial values if editing
         self.selected_exploration = initial_expl or []
         self.selected_maintenance = initial_maint or []
         self.custom_maintenance = initial_custom.copy() if initial_custom else []
@@ -275,7 +271,6 @@ class OrderView(discord.ui.View):
 
         try:
             if self.is_edit:
-                # Update Summary Thread View State
                 new_thread_view = ThreadManagementView(
                     job_message=self.job_message,
                     prev_expl=self.selected_exploration,
@@ -370,4 +365,9 @@ class OrderView(discord.ui.View):
 
     @discord.ui.button(label="Close / Cancel", style=discord.ButtonStyle.red, emoji="✖️", row=3)
     async def cancel_order(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.message.delete()
+        # Defear interaction instantly to prevent "Paimon didn't respond in time" error
+        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.message.delete()
+        except discord.NotFound:
+            pass
