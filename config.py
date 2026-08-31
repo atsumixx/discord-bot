@@ -1,19 +1,19 @@
-# Price mapping (100% full prices vs >50% discounted prices)
+# Price mapping (Standard full prices vs >50% discounted prices)
 EXPLORATION_PRICES = {
-    # 100% Rates
-    "Mondstadt (100%)": 7.00,
-    "Liyue (100%)": 10.00,
-    "Inazuma (100%)": 25.00,
-    "Sumeru (100%)": 90.00,
-    "Fontaine (100%)": 40.00,
-    "Natlan (100%)": 45.00,
-    "Snezhnaya (100%)": 40.00,
-    "Dragonspine (100%)": 8.00,
-    "Chasm (100%)": 15.00,
-    "Chenyu Vale (100%)": 15.00,
-    "Enkanomiya (100%)": 15.00,
-    "Sea of Bygone Eras (100%)": 15.00,
-    "Ancient Sacred Mountain (100%)": 15.00,
+    # Standard Rates
+    "Mondstadt": 7.00,
+    "Liyue": 10.00,
+    "Inazuma": 25.00,
+    "Sumeru": 90.00,
+    "Fontaine": 40.00,
+    "Natlan": 45.00,
+    "Snezhnaya": 40.00,
+    "Dragonspine": 8.00,
+    "Chasm": 15.00,
+    "Chenyu Vale": 15.00,
+    "Enkanomiya": 15.00,
+    "Sea of Bygone Eras": 15.00,
+    "Ancient Sacred Mountain": 15.00,
     
     # >50% Progress Rates (35% OFF)
     "Mondstadt (>50%)": 4.55,

@@ -6,31 +6,31 @@ class ExplorationSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
         options = [
-            discord.SelectOption(label="Mondstadt (100%)", description="$7.00", emoji="🍃", value="Mondstadt (100%)"),
-            discord.SelectOption(label="Mondstadt (>50% Progress)", description="$4.55 (35% OFF)", emoji="🍃", value="Mondstadt (>50%)"),
-            discord.SelectOption(label="Liyue (100%)", description="$10.00", emoji="🔶", value="Liyue (100%)"),
-            discord.SelectOption(label="Liyue (>50% Progress)", description="$6.50 (35% OFF)", emoji="🔶", value="Liyue (>50%)"),
-            discord.SelectOption(label="Inazuma (100%)", description="$25.00", emoji="⚡", value="Inazuma (100%)"),
-            discord.SelectOption(label="Inazuma (>50% Progress)", description="$16.25 (35% OFF)", emoji="⚡", value="Inazuma (>50%)"),
-            discord.SelectOption(label="Sumeru with Desert (100%)", description="$90.00", emoji="🌿", value="Sumeru (100%)"),
-            discord.SelectOption(label="Sumeru with Desert (>50% Progress)", description="$58.50 (35% OFF)", emoji="🌿", value="Sumeru (>50%)"),
-            discord.SelectOption(label="Fontaine (100%)", description="$40.00", emoji="💧", value="Fontaine (100%)"),
-            discord.SelectOption(label="Fontaine (>50% Progress)", description="$26.00 (35% OFF)", emoji="💧", value="Fontaine (>50%)"),
-            discord.SelectOption(label="Natlan (100%)", description="$45.00", emoji="🔥", value="Natlan (100%)"),
-            discord.SelectOption(label="Natlan (>50% Progress)", description="$29.25 (35% OFF)", emoji="🔥", value="Natlan (>50%)"),
-            discord.SelectOption(label="Snezhnaya Archon (100%)", description="$40.00", emoji="❄️", value="Snezhnaya (100%)"),
-            discord.SelectOption(label="Snezhnaya (>50% Progress)", description="$26.00 (35% OFF)", emoji="❄️", value="Snezhnaya (>50%)"),
-            discord.SelectOption(label="Dragonspine (100%)", description="$8.00", emoji="🏔️", value="Dragonspine (100%)"),
-            discord.SelectOption(label="Dragonspine (>50% Progress)", description="$5.20 (35% OFF)", emoji="🏔️", value="Dragonspine (>50%)"),
-            discord.SelectOption(label="Chasm with underground (100%)", description="$15.00", emoji="🕳️", value="Chasm (100%)"),
-            discord.SelectOption(label="Chasm (>50% Progress)", description="$9.75 (35% OFF)", emoji="🕳️", value="Chasm (>50%)"),
-            discord.SelectOption(label="Chenyu Vale (100%)", description="$15.00", emoji="🍵", value="Chenyu Vale (100%)"),
-            discord.SelectOption(label="Chenyu Vale (>50% Progress)", description="$9.75 (35% OFF)", emoji="🍵", value="Chenyu Vale (>50%)"),
-            discord.SelectOption(label="Enkanomiya (100%)", description="$15.00", emoji="💠", value="Enkanomiya (100%)"),
-            discord.SelectOption(label="Enkanomiya (>50% Progress)", description="$9.75 (35% OFF)", emoji="💠", value="Enkanomiya (>50%)"),
-            discord.SelectOption(label="Sea of Bygone Eras (100%)", description="$15.00", emoji="🐚", value="Sea of Bygone Eras (100%)"),
-            discord.SelectOption(label="Sea of Bygone Eras (>50%)", description="$9.75 (35% OFF)", emoji="🐚", value="Sea of Bygone Eras (>50%)"),
-            discord.SelectOption(label="Ancient Sacred Mountain", description="$15.00", emoji="⛰️", value="Ancient Sacred Mountain (100%)"),
+            discord.SelectOption(label="Mondstadt", description="$7.00", emoji="🍃", value="Mondstadt"),
+            discord.SelectOption(label="Mondstadt (>50% Exploration)", description="$4.55 (35% OFF)", emoji="🍃", value="Mondstadt (>50%)"),
+            discord.SelectOption(label="Liyue", description="$10.00", emoji="🔶", value="Liyue"),
+            discord.SelectOption(label="Liyue (>50% Exploration)", description="$6.50 (35% OFF)", emoji="🔶", value="Liyue (>50%)"),
+            discord.SelectOption(label="Inazuma", description="$25.00", emoji="⚡", value="Inazuma"),
+            discord.SelectOption(label="Inazuma (>50% Exploration)", description="$16.25 (35% OFF)", emoji="⚡", value="Inazuma (>50%)"),
+            discord.SelectOption(label="Sumeru with Desert", description="$90.00", emoji="🌿", value="Sumeru"),
+            discord.SelectOption(label="Sumeru with Desert (>50% Exploration)", description="$58.50 (35% OFF)", emoji="🌿", value="Sumeru (>50%)"),
+            discord.SelectOption(label="Fontaine", description="$40.00", emoji="💧", value="Fontaine"),
+            discord.SelectOption(label="Fontaine (>50% Exploration)", description="$26.00 (35% OFF)", emoji="💧", value="Fontaine (>50%)"),
+            discord.SelectOption(label="Natlan", description="$45.00", emoji="🔥", value="Natlan"),
+            discord.SelectOption(label="Natlan (>50% Exploration)", description="$29.25 (35% OFF)", emoji="🔥", value="Natlan (>50%)"),
+            discord.SelectOption(label="Snezhnaya Archon/World Quest", description="$40.00", emoji="❄️", value="Snezhnaya"),
+            discord.SelectOption(label="Snezhnaya (>50% Exploration)", description="$26.00 (35% OFF)", emoji="❄️", value="Snezhnaya (>50%)"),
+            discord.SelectOption(label="Dragonspine", description="$8.00", emoji="🏔️", value="Dragonspine"),
+            discord.SelectOption(label="Dragonspine (>50% Exploration)", description="$5.20 (35% OFF)", emoji="🏔️", value="Dragonspine (>50%)"),
+            discord.SelectOption(label="Chasm with underground", description="$15.00", emoji="🕳️", value="Chasm"),
+            discord.SelectOption(label="Chasm (>50% Exploration)", description="$9.75 (35% OFF)", emoji="🕳️", value="Chasm (>50%)"),
+            discord.SelectOption(label="Chenyu Vale", description="$15.00", emoji="🍵", value="Chenyu Vale"),
+            discord.SelectOption(label="Chenyu Vale (>50% Exploration)", description="$9.75 (35% OFF)", emoji="🍵", value="Chenyu Vale (>50%)"),
+            discord.SelectOption(label="Enkanomiya", description="$15.00", emoji="💠", value="Enkanomiya"),
+            discord.SelectOption(label="Enkanomiya (>50% Exploration)", description="$9.75 (35% OFF)", emoji="💠", value="Enkanomiya (>50%)"),
+            discord.SelectOption(label="Sea of Bygone Eras", description="$15.00", emoji="🐚", value="Sea of Bygone Eras"),
+            discord.SelectOption(label="Sea of Bygone Eras (>50% Exploration)", description="$9.75 (35% OFF)", emoji="🐚", value="Sea of Bygone Eras (>50%)"),
+            discord.SelectOption(label="Ancient Sacred Mountain", description="$15.00", emoji="⛰️", value="Ancient Sacred Mountain"),
         ]
         
         for opt in options:
@@ -122,7 +122,6 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
 
-# Client Feedback Modal (Posts via Webhook with Client Profile Picture & Paimon Embed Details)
 class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
     feedback = discord.ui.TextInput(
         label="Service & Pilot Feedback",
@@ -144,7 +143,6 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
         done_channel = discord.utils.get(guild.text_channels, name="done-deal✔️")
         
         if done_channel:
-            # Find or create a webhook in the done-deal channel to mimic the client profile picture
             webhooks = await done_channel.webhooks()
             webhook = discord.utils.get(webhooks, name="PaimonLogger")
             if not webhook:
@@ -154,31 +152,27 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
             client_name = client_user.display_name
             client_avatar = client_user.display_avatar.url
 
-            # 1. Post the client review using their profile picture via Webhook
             await webhook.send(
                 content=f"vouch !! {self.feedback.value}",
                 username=client_name,
                 avatar_url=client_avatar
             )
 
-            # 2. Post Paimon's embed right below it containing the order breakdown details
             embed = discord.Embed(
                 title="✨ Commission Details & Summary",
                 description=self.summary_text,
-                color=discord.Color.from_rgb(255, 182, 193) # Soft pink/paimon vibe
+                color=discord.Color.from_rgb(255, 182, 193)
             )
             embed.set_footer(text="Atsumi Piloting Services • Deal Completed Successfully")
             
             await done_channel.send(embed=embed)
             
-            # 3. Archive and lock the thread
             if isinstance(interaction.channel, discord.Thread):
                 try:
                     await interaction.channel.edit(name=f"done-{interaction.channel.name}", archived=True, locked=True)
                 except Exception:
                     pass
 
-        # 4. Update job board message
         if self.job_message:
             try:
                 new_job_content = self.job_message.content.replace("🟡 **Status:** In Progress", "🟢 **Status:** Completed & Reviewed")
