@@ -167,36 +167,32 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
 
 # ----------------- JOB BOARD BUTTON VIEW -----------------
 class JobBoardView(discord.ui.View):
-    def __init__(self, base_msg):
-        super().__init__(timeout=None) # Buttons stay active indefinitely while bot is running
-        self.base_msg = base_msg
+    def __init__(self):
+        super().__init__(timeout=None)
         self.pilot = None
 
     @discord.ui.button(label="Claim Job", style=discord.ButtonStyle.blurple, emoji="🙋", custom_id="claim_btn")
     async def claim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.pilot = interaction.user
         
-        # Update buttons
         button.disabled = True
         button.label = "Claimed"
         button.style = discord.ButtonStyle.secondary
         
-        # Find the resolve button and enable it
         for child in self.children:
             if getattr(child, "custom_id", "") == "resolve_btn":
                 child.disabled = False
             
-        # Update text from Open -> In Progress
-        new_msg = self.base_msg.replace(
+        # Reads the LIVE message content to prevent overwriting edits
+        current_content = interaction.message.content
+        new_msg = current_content.replace(
             "🔴 **Status:** Open (No Pilot)", 
             f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})"
         )
-        self.base_msg = new_msg
         await interaction.response.edit_message(content=new_msg, view=self)
 
     @discord.ui.button(label="Mark Resolved", style=discord.ButtonStyle.success, emoji="✅", disabled=True, custom_id="resolve_btn")
     async def resolve_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Ensure only the pilot who claimed it (or an admin) can resolve it
         if interaction.user != self.pilot and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("⚠️ Only the claiming pilot or an admin can resolve this job!", ephemeral=True)
             return
@@ -204,23 +200,43 @@ class JobBoardView(discord.ui.View):
         button.disabled = True
         button.label = "Resolved"
         
-        # Update text from In Progress -> Resolved
-        new_msg = self.base_msg.replace(
+        current_content = interaction.message.content
+        new_msg = current_content.replace(
             f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})", 
             f"🟢 **Status:** Resolved (Completed by {self.pilot.mention})"
         )
-        self.base_msg = new_msg
         await interaction.response.edit_message(content=new_msg, view=self)
+
+
+# ----------------- EDIT THREAD MANAGEMENT VIEW -----------------
+class ThreadManagementView(discord.ui.View):
+    def __init__(self, job_message):
+        super().__init__(timeout=None)
+        self.job_message = job_message
+        self.summary_message = None
+
+    @discord.ui.button(label="Edit / Replace Order", style=discord.ButtonStyle.secondary, emoji="✏️")
+    async def edit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = OrderView(is_edit=True, job_message=self.job_message, summary_message=self.summary_message)
+        await interaction.response.send_message(
+            "**Editing Order:** Please select your FULL updated order below. This will overwrite your current order.",
+            view=view,
+            ephemeral=True
+        )
+        view.message = await interaction.original_response()
 
 
 # ----------------- MAIN CART / ORDER VIEW -----------------
 class OrderView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=180)  # Times out after 3 minutes
+    def __init__(self, is_edit=False, job_message=None, summary_message=None):
+        super().__init__(timeout=180) 
+        self.is_edit = is_edit
+        self.job_message = job_message
+        self.summary_message = summary_message
+        
         self.message = None
         self.selected_exploration = []
         self.selected_maintenance = []
-
         self.custom_maintenance = []
         self.total_custom_price = 0.0
 
@@ -272,11 +288,11 @@ class OrderView(discord.ui.View):
 
         for item in self.selected_exploration:
             total_price += exploration_prices.get(item, 0.0)
-
         for item in self.selected_maintenance:
             total_price += maintenance_prices.get(item, 0.0)
 
-        summary = f"📋 **New Commission Order from {interaction.user.mention}**\n"
+        # Build Summary String
+        summary = f"📋 **{'Updated' if self.is_edit else 'New'} Commission Order from {interaction.user.mention}**\n"
         if self.selected_exploration:
             summary += f"\n🗺️ **Exploration:**\n- " + "\n- ".join(self.selected_exploration) + "\n"
         if self.custom_maintenance:
@@ -288,14 +304,60 @@ class OrderView(discord.ui.View):
         summary += "\n💳 *Please coordinate payment with management here before piloting begins.*"
 
         try:
+            # ----------------- EDIT EXISTING ORDER -----------------
+            if self.is_edit:
+                # 1. Update Thread Summary Message
+                if self.summary_message:
+                    await self.summary_message.edit(content=summary)
+
+                # 2. Update Job Board Message (Preserving Status)
+                if self.job_message:
+                    old_content = self.job_message.content
+                    status_line = "🔴 **Status:** Open (No Pilot)"
+                    for line in old_content.split('\n'):
+                        if "**Status:**" in line:
+                            status_line = line
+                            break
+                    
+                    job_board_msg = (
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"🆕 **Job Updated!**\n"
+                        f"{status_line}\n"
+                        f"👤 **Client:** {interaction.user.mention}\n"
+                    )
+                    if self.selected_exploration:
+                        job_board_msg += f"🗺️ **Exploration:** {', '.join(self.selected_exploration)}\n"
+                    if self.custom_maintenance:
+                        job_board_msg += f"🛠️ **Upgrades:** {', '.join(self.custom_maintenance)}\n"
+                    if self.selected_maintenance:
+                        job_board_msg += f"⚔️ **Maintenance:** {', '.join(self.selected_maintenance)}\n"
+
+                    job_board_msg += (
+                        f"💰 **Total Price:** `${total_price:.2f}`\n"
+                        f"📂 **Thread:** {self.summary_message.channel.mention}\n\n"
+                    )
+                    await self.job_message.edit(content=job_board_msg)
+
+                await interaction.followup.send("✅ Your order has been successfully updated!", ephemeral=True)
+                
+                # Clean up the ephemeral edit window
+                if self.message:
+                    try:
+                        await self.message.delete()
+                    except discord.NotFound:
+                        pass
+                return
+
+            # ----------------- CREATE NEW ORDER -----------------
             thread_name = f"order-{interaction.user.name}"
             ticket_thread = await interaction.channel.create_thread(
                 name=thread_name, type=discord.ChannelType.private_thread, invitable=False
             )
             await ticket_thread.add_user(interaction.user)
-            await ticket_thread.send(summary)
 
+            # Post to Job Board
             job_channel = discord.utils.get(interaction.guild.text_channels, name="available-job")
+            job_message = None
             if job_channel:
                 job_board_msg = (
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -314,9 +376,13 @@ class OrderView(discord.ui.View):
                     f"💰 **Total Price:** `${total_price:.2f}`\n"
                     f"📂 **Thread:** {ticket_thread.mention}\n\n"
                 )
-                
-                board_view = JobBoardView(base_msg=job_board_msg)
-                await job_channel.send(job_board_msg, view=board_view)
+                board_view = JobBoardView()
+                job_message = await job_channel.send(job_board_msg, view=board_view)
+
+            # Post Summary to Thread WITH the Edit Button
+            thread_view = ThreadManagementView(job_message=job_message)
+            summary_msg = await ticket_thread.send(summary, view=thread_view)
+            thread_view.summary_message = summary_msg # Save reference for editing
 
             await interaction.followup.send(
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
