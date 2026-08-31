@@ -39,7 +39,7 @@ async def help(ctx):
         name="🛒 1. Placing an Order",
         value="Type `!order` to open the cart.\n"
               "• **Dropdowns:** Select map exploration or resin/talent maintenance.\n"
-              "• **>50% Discount:** If your map is over halfway done, pick the `(>50% Exploration)` tag for 35% off!\n"
+              "• **35% Discount:** If your map is over halfway done, pick the `(50% above Exploration)` tag for 35% off!\n"
               "• **Modals:** Use the blue buttons to type in Character/Weapon upgrades.",
         inline=False
     )
