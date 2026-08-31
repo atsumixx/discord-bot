@@ -27,13 +27,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Track active order panels per (user_id, channel_id) to auto-close old ones
+active_order_messages = {}
+
 
 # ----------------- DROPDOWN SELECT MENUS -----------------
 class ExplorationSelect(discord.ui.Select):
 
   def __init__(self):
     options = [
-        # Main Regions
         discord.SelectOption(
             label="Mondstadt", description="$7", emoji="🍃", value="Mondstadt"
         ),
@@ -61,7 +63,6 @@ class ExplorationSelect(discord.ui.Select):
             emoji="❄️",
             value="Snezhnaya",
         ),
-        # Special Areas
         discord.SelectOption(
             label="Dragonspine",
             description="$8",
@@ -295,17 +296,31 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
 class OrderView(discord.ui.View):
 
   def __init__(self):
-    super().__init__(timeout=180)
+    super().__init__(timeout=180)  # Times out after 3 minutes
+    self.message = None
     self.selected_exploration = []
     self.selected_maintenance = []
 
-    # Tracking variables for custom modal additions
     self.custom_maintenance = []
     self.total_custom_price = 0.0
 
-    # Add components
     self.add_item(ExplorationSelect())
     self.add_item(MaintenanceSelect())
+
+  async def on_timeout(self):
+    for child in self.children:
+      child.disabled = True
+    if self.message:
+      try:
+        await self.message.edit(
+            content=(
+                "⏱️ **Order session timed out.** Please type `!order` again to"
+                " start a new order."
+            ),
+            view=self,
+        )
+      except discord.NotFound:
+        pass
 
   @discord.ui.button(
       label="Add Character Ascension",
@@ -351,7 +366,6 @@ class OrderView(discord.ui.View):
       )
       return
 
-    # Calculate total price
     total_price = self.total_custom_price
 
     exploration_prices = {
@@ -385,7 +399,6 @@ class OrderView(discord.ui.View):
     for item in self.selected_maintenance:
       total_price += maintenance_prices.get(item, 0.0)
 
-    # Build order summary
     summary = f"📋 **New Commission Order from {interaction.user.mention}**\n"
     if self.selected_exploration:
       summary += (
@@ -413,7 +426,6 @@ class OrderView(discord.ui.View):
     )
 
     try:
-      # 1. Create Private Thread
       thread_name = f"order-{interaction.user.name}"
       ticket_thread = await interaction.channel.create_thread(
           name=thread_name,
@@ -423,7 +435,6 @@ class OrderView(discord.ui.View):
       await ticket_thread.add_user(interaction.user)
       await ticket_thread.send(summary)
 
-      # 2. Post to #available-job Board
       job_channel = discord.utils.get(
           interaction.guild.text_channels, name="available-job"
       )
@@ -445,7 +456,6 @@ class OrderView(discord.ui.View):
         )
         await job_channel.send(job_board_msg)
 
-      # 3. Direct response to user
       await interaction.followup.send(
           f"✅ Your order has been submitted! Head over to your private thread"
           f" {ticket_thread.mention} to finalize your payment of"
@@ -454,9 +464,7 @@ class OrderView(discord.ui.View):
       )
     except Exception as e:
       await interaction.followup.send(
-          f"⚠️ Failed to process order. Make sure permissions are set"
-          f" correctly! Error: {e}",
-          ephemeral=True,
+          f"⚠️ Failed to process order. Error: {e}", ephemeral=True
       )
 
   @discord.ui.button(
@@ -480,13 +488,31 @@ async def on_ready():
 
 @bot.command()
 async def order(ctx):
+  # Deletes the user's "!order" command message
+  try:
+    await ctx.message.delete()
+  except discord.Forbidden:
+    pass
+
+  # Deletes any existing active order message for this user in this channel
+  user_key = (ctx.author.id, ctx.channel.id)
+  if user_key in active_order_messages:
+    old_msg = active_order_messages[user_key]
+    try:
+      await old_msg.delete()
+    except discord.NotFound:
+      pass
+
   view = OrderView()
-  await ctx.send(
-      "**Welcome to Atsumi Piloting Services!**\nCustomize your commission"
-      " bundle below by selecting options from the menus or clicking the"
-      " upgrade buttons, then click confirm.",
+  new_msg = await ctx.send(
+      f"**Welcome to Atsumi Piloting Services, {ctx.author.mention}!**\n"
+      "Customize your commission bundle below by selecting options from the"
+      " menus or clicking the upgrade buttons, then click confirm.",
       view=view,
   )
+
+  view.message = new_msg
+  active_order_messages[user_key] = new_msg
 
 
 # ----------------- RUN EVERYTHING -----------------
