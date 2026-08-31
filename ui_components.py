@@ -37,21 +37,13 @@ class ExplorationSelect(discord.ui.Select):
             if opt.value in default_values:
                 opt.default = True
 
-        super().__init__(
-            placeholder="Select Exploration Services...",
-            min_values=0,
-            max_values=len(options),
-            options=options,
-        )
+        super().__init__(placeholder="Select Exploration Services...", min_values=0, max_values=len(options), options=options)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         view: OrderView = self.view
         view.selected_exploration = self.values
-        await interaction.followup.send(
-            f"Updated exploration choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
-        )
+        await interaction.followup.send(f"Updated exploration choices: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
 
 class MaintenanceSelect(discord.ui.Select):
@@ -62,26 +54,17 @@ class MaintenanceSelect(discord.ui.Select):
             discord.SelectOption(label="Talent Building (1-6)", description="$0.50", emoji="📜", value="Talent Building 1-6 ($0.50)"),
             discord.SelectOption(label="Talent Building (7-10)", description="$2.00", emoji="✨", value="Talent Building 7-10 ($2.00)"),
         ]
-        
         for opt in options:
             if opt.value in default_values:
                 opt.default = True
 
-        super().__init__(
-            placeholder="Select Other Character Maintenance...",
-            min_values=0,
-            max_values=len(options),
-            options=options,
-        )
+        super().__init__(placeholder="Select Other Character Maintenance...", min_values=0, max_values=len(options), options=options)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         view: OrderView = self.view
         view.selected_maintenance = self.values
-        await interaction.followup.send(
-            f"Updated maintenance choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
-        )
+        await interaction.followup.send(f"Updated maintenance choices: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
 
 # ----------------- MODALS -----------------
@@ -99,7 +82,7 @@ class CharacterAscensionModal(discord.ui.Modal, title="Character Ascension"):
             curr = int(self.current_lvl.value)
             targ = int(self.target_lvl.value)
             if curr >= targ or curr < 1 or targ > 90:
-                await interaction.response.send_message("⚠️ Invalid levels! Target must be higher than current.", ephemeral=True)
+                await interaction.response.send_message("⚠️ Invalid levels!", ephemeral=True)
                 return
             thresholds = [20, 40, 50, 60, 70, 80]
             ascensions_needed = sum(1 for t in thresholds if curr <= t < targ)
@@ -126,7 +109,7 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             curr = int(self.current_lvl.value)
             targ = int(self.target_lvl.value)
             if curr >= targ or curr < 1 or targ > 90:
-                await interaction.response.send_message("⚠️ Invalid levels! Target must be higher.", ephemeral=True)
+                await interaction.response.send_message("⚠️ Invalid levels!", ephemeral=True)
                 return
             thresholds = [20, 40, 50, 60, 70, 80]
             ascensions_needed = sum(1 for t in thresholds if curr <= t < targ)
@@ -137,6 +120,63 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
+
+
+# Client Feedback Modal when closing/resolving the deal
+class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
+    feedback = discord.ui.TextInput(
+        label="Service & Pilot Feedback",
+        style=discord.TextStyle.paragraph,
+        placeholder="How was the service? Any shoutout for the pilot?",
+        required=True,
+        max_length=300
+    )
+
+    def __init__(self, summary_text, job_message):
+        super().__init__()
+        self.summary_text = summary_text
+        self.job_message = job_message
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        
+        guild = interaction.guild
+        done_channel = discord.utils.get(guild.text_channels, name="done-deal✔️")
+        
+        # Format the final success post for the done-deal channel
+        completion_embed_msg = (
+            "✅ **COMPLETED COMMISSION / DEAL DONE**\n"
+            f"{self.summary_text}\n\n"
+            f"💬 **Client Review:** *\"{self.feedback.value}\"*\n"
+            f"👤 **Client:** {interaction.user.mention}"
+        )
+
+        if done_channel:
+            # 1. Post to done-deal channel
+            await done_channel.send(completion_embed_msg)
+            
+            # 2. Move thread to the done-deal channel (Discord API allows moving threads under text channels)
+            if isinstance(interaction.channel, discord.Thread):
+                try:
+                    # Move thread context / parent channel if supported, or lock/archive it
+                    await interaction.channel.edit(name=f"done-{interaction.channel.name}", archived=True, locked=True)
+                except Exception:
+                    pass
+
+        # 3. Update job board message to show green resolved state
+        if self.job_message:
+            try:
+                new_job_content = self.job_message.content.replace("🟡 **Status:** In Progress", "🟢 **Status:** Completed & Reviewed")
+                await self.job_message.edit(content=new_job_content, view=None)
+            except discord.NotFound:
+                pass
+
+        await interaction.followup.send("🎉 Thank you! This order has been marked as resolved, reviewed, and archived.", ephemeral=True)
+        
+        try:
+            await interaction.message.delete()
+        except discord.NotFound:
+            pass
 
 
 # ----------------- JOB BOARD & THREAD VIEWS -----------------
@@ -155,10 +195,7 @@ class JobBoardView(discord.ui.View):
             if getattr(child, "custom_id", "") == "resolve_btn":
                 child.disabled = False
         current_content = interaction.message.content
-        new_msg = current_content.replace(
-            "🔴 **Status:** Open (No Pilot)", 
-            f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})"
-        )
+        new_msg = current_content.replace("🔴 **Status:** Open (No Pilot)", f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})")
         await interaction.response.edit_message(content=new_msg, view=self)
 
     @discord.ui.button(label="Mark Resolved", style=discord.ButtonStyle.success, emoji="✅", disabled=True, custom_id="resolve_btn")
@@ -169,24 +206,22 @@ class JobBoardView(discord.ui.View):
         button.disabled = True
         button.label = "Resolved"
         current_content = interaction.message.content
-        new_msg = current_content.replace(
-            f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})", 
-            f"🟢 **Status:** Resolved (Completed by {self.pilot.mention})"
-        )
+        new_msg = current_content.replace(f"🟡 **Status:** In Progress (Claimed by {self.pilot.mention})", f"🟢 **Status:** Resolved (Completed by {self.pilot.mention})")
         await interaction.response.edit_message(content=new_msg, view=self)
 
 
 class ThreadManagementView(discord.ui.View):
-    def __init__(self, job_message, prev_expl=None, prev_maint=None, prev_custom=None, prev_custom_price=0.0):
+    def __init__(self, job_message, summary_text, prev_expl=None, prev_maint=None, prev_custom=None, prev_custom_price=0.0):
         super().__init__(timeout=None)
         self.job_message = job_message
+        self.summary_text = summary_text
         self.summary_message = None
         self.prev_expl = prev_expl or []
         self.prev_maint = prev_maint or []
         self.prev_custom = prev_custom or []
         self.prev_custom_price = prev_custom_price
 
-    @discord.ui.button(label="Edit / Replace Order", style=discord.ButtonStyle.secondary, emoji="✏️")
+    @discord.ui.button(label="Edit / Replace Order", style=discord.ButtonStyle.secondary, emoji="✏️", row=0)
     async def edit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = OrderView(
             is_edit=True, 
@@ -197,12 +232,14 @@ class ThreadManagementView(discord.ui.View):
             initial_custom=self.prev_custom,
             initial_custom_price=self.prev_custom_price
         )
-        await interaction.response.send_message(
-            "**Editing Order:** Your previous selections are loaded below. You can update them and submit.",
-            view=view,
-            ephemeral=True
-        )
+        await interaction.response.send_message("**Editing Order:** Update your selections below.", view=view, ephemeral=True)
         view.message = await interaction.original_response()
+
+    @discord.ui.button(label="Mark Resolved & Review", style=discord.ButtonStyle.success, emoji="⭐", row=0)
+    async def finish_and_review(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Trigger feedback modal for the client
+        modal = ClientFeedbackModal(summary_text=self.summary_text, job_message=self.job_message)
+        await interaction.response.send_modal(modal)
 
 
 # ----------------- MAIN CART / ORDER VIEW -----------------
@@ -243,7 +280,7 @@ class OrderView(discord.ui.View):
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
-        await interaction.response.send_message("✅ Custom weapon/character upgrades have been cleared from this order.", ephemeral=True)
+        await interaction.response.send_message("✅ Upgrades cleared.", ephemeral=True)
 
     @discord.ui.button(label="Confirm & Submit Order", style=discord.ButtonStyle.green, emoji="✅", row=3)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -273,6 +310,7 @@ class OrderView(discord.ui.View):
             if self.is_edit:
                 new_thread_view = ThreadManagementView(
                     job_message=self.job_message,
+                    summary_text=summary,
                     prev_expl=self.selected_exploration,
                     prev_maint=self.selected_maintenance,
                     prev_custom=self.custom_maintenance,
@@ -348,6 +386,7 @@ class OrderView(discord.ui.View):
 
             thread_view = ThreadManagementView(
                 job_message=job_message,
+                summary_text=summary,
                 prev_expl=self.selected_exploration,
                 prev_maint=self.selected_maintenance,
                 prev_custom=self.custom_maintenance,
@@ -365,7 +404,6 @@ class OrderView(discord.ui.View):
 
     @discord.ui.button(label="Close / Cancel", style=discord.ButtonStyle.red, emoji="✖️", row=3)
     async def cancel_order(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Defear interaction instantly to prevent "Paimon didn't respond in time" error
         await interaction.response.defer(ephemeral=True)
         try:
             await interaction.message.delete()
