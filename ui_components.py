@@ -37,11 +37,16 @@ class ExplorationSelect(discord.ui.Select):
             if opt.value in default_values:
                 opt.default = True
 
-        super().__init__(placeholder="Select Exploration Services...", min_values=0, max_values=len(options), options=options)
+        super().__init__(
+            placeholder="Select Exploration Services...",
+            min_values=0,
+            max_values=min(len(options), 25),
+            options=options
+        )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        view: OrderView = self.view
+        view = self.view
         view.selected_exploration = self.values
         await interaction.followup.send(f"Updated exploration choices: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
@@ -58,11 +63,16 @@ class MaintenanceSelect(discord.ui.Select):
             if opt.value in default_values:
                 opt.default = True
 
-        super().__init__(placeholder="Select Other Character Maintenance...", min_values=0, max_values=len(options), options=options)
+        super().__init__(
+            placeholder="Select Other Character Maintenance...",
+            min_values=0,
+            max_values=len(options),
+            options=options
+        )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        view: OrderView = self.view
+        view = self.view
         view.selected_maintenance = self.values
         await interaction.followup.send(f"Updated maintenance choices: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
@@ -158,7 +168,6 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
                 avatar_url=client_avatar
             )
 
-            # Clean payment instruction text for finished orders
             clean_summary = self.summary_text.replace("\n💳 *Please coordinate payment with management here before piloting begins.*", "")
 
             embed = discord.Embed(

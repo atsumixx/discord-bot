@@ -1,7 +1,6 @@
 import os
 import discord
 from discord.ext import commands
-from keep_alive import keep_alive
 from ui_components import OrderView
 
 # ----------------- DISCORD BOT SETUP -----------------
@@ -32,7 +31,7 @@ async def help(ctx):
     embed = discord.Embed(
         title="🌟 Atsumi Piloting Bot Guide",
         description="Here is everything you need to know about navigating the automated commission system.",
-        color=discord.Color.from_rgb(255, 182, 193) # Soft pink theme
+        color=discord.Color.from_rgb(255, 182, 193)  # Soft pink theme
     )
 
     embed.add_field(
@@ -101,7 +100,6 @@ async def order(ctx):
 
 # ----------------- RUN EVERYTHING -----------------
 if __name__ == "__main__":
-    keep_alive()
     TOKEN = os.getenv("DISCORD_TOKEN")
     if TOKEN:
         bot.run(TOKEN)
