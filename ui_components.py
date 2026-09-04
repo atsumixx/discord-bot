@@ -390,7 +390,11 @@ class OrderView(discord.ui.View):
             job_channel = discord.utils.get(interaction.guild.text_channels, name="available-job")
             job_message = None
             if job_channel:
+                pilot_role = discord.utils.get(interaction.guild.roles, name="Pilot")
+                role_ping = pilot_role.mention if pilot_role else "@Pilot"
+
                 job_board_msg = (
+                    f"{role_ping}\n"
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"🆕 **New Job Available!**\n"
                     f"🔴 **Status:** Open\n"
