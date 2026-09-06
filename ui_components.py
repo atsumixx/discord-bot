@@ -330,6 +330,19 @@ class JobBoardView(discord.ui.View):
         super().__init__(timeout=None)
         self.pilot = None
 
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, discord.NotFound):
+            print(f"[JobBoardView] Interaction expired before it could be handled: {error}")
+            return
+        print(f"[JobBoardView] Unhandled error in {item}: {error}")
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("⚠️ Something went wrong. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("⚠️ Something went wrong. Please try again.", ephemeral=True)
+        except discord.HTTPException:
+            pass
+
     @discord.ui.button(label="Claim Job", style=discord.ButtonStyle.blurple, emoji="🙋", custom_id="claim_btn")
     async def claim_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.pilot = interaction.user
@@ -370,8 +383,24 @@ class ThreadManagementView(discord.ui.View):
         self.prev_custom = prev_custom or []
         self.prev_custom_price = prev_custom_price
 
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, discord.NotFound):
+            print(f"[ThreadManagementView] Interaction expired before it could be handled: {error}")
+            return
+        print(f"[ThreadManagementView] Unhandled error in {item}: {error}")
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("⚠️ Something went wrong. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("⚠️ Something went wrong. Please try again.", ephemeral=True)
+        except discord.HTTPException:
+            pass
+
     @discord.ui.button(label="Edit / Replace Order", style=discord.ButtonStyle.secondary, emoji="✏️", row=0)
     async def edit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Ack immediately before building the (potentially heavier) view, so we
+        # never risk missing Discord's 3-second interaction window.
+        await interaction.response.defer(ephemeral=True, thinking=True)
         view = OrderView(
             is_edit=True, 
             job_message=self.job_message, 
@@ -383,8 +412,8 @@ class ThreadManagementView(discord.ui.View):
             initial_custom=self.prev_custom,
             initial_custom_price=self.prev_custom_price
         )
-        await interaction.response.send_message("**Editing Order:** Update your selections below.", view=view, ephemeral=True)
-        view.message = await interaction.original_response()
+        msg = await interaction.followup.send("**Editing Order:** Update your selections below.", view=view, ephemeral=True)
+        view.message = msg
 
     @discord.ui.button(label="Mark Resolved & Review", style=discord.ButtonStyle.success, emoji="⭐", row=0)
     async def finish_and_review(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -395,10 +424,12 @@ class ThreadManagementView(discord.ui.View):
 # ----------------- MAIN CART / ORDER VIEW -----------------
 class OrderView(discord.ui.View):
     def __init__(self, is_edit=False, job_message=None, summary_message=None, 
-                 initial_expl=None, initial_special=None, initial_wq=None, initial_maint=None, initial_custom=None, initial_custom_price=0.0):
+                 initial_expl=None, initial_special=None, initial_wq=None, initial_maint=None, initial_custom=None, initial_custom_price=0.0,
+                 on_close=None):
         super().__init__(timeout=180) 
         self.is_edit = is_edit
         self.job_message = job_message
+        self.on_close = on_close  # Optional callback to free tracking entries (e.g. active_order_messages)
         self.summary_message = summary_message
         self.message = None
         
@@ -421,6 +452,22 @@ class OrderView(discord.ui.View):
         
         # Initialize WQ options dynamically based on initial values if editing
         self.update_world_quest_dropdown()
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        # Gracefully handle expired/unknown interactions (e.g. "didn't respond
+        # in time") instead of letting an unhandled traceback crash the event
+        # loop or leave the user with no feedback at all.
+        if isinstance(error, discord.NotFound):
+            print(f"[OrderView] Interaction expired before it could be handled: {error}")
+            return
+        print(f"[OrderView] Unhandled error in {item}: {error}")
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
+        except discord.HTTPException:
+            pass
 
     def update_world_quest_dropdown(self):
         # Preserve the order regions were picked in each dropdown so quests group
@@ -494,6 +541,8 @@ class OrderView(discord.ui.View):
     async def on_timeout(self):
         for child in self.children:
             child.disabled = True
+        if self.on_close:
+            self.on_close()
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -664,6 +713,9 @@ class OrderView(discord.ui.View):
             summary_msg = await ticket_thread.send(summary, view=thread_view)
             thread_view.summary_message = summary_msg
 
+            if self.on_close:
+                self.on_close()
+
             await interaction.followup.send(
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
                 ephemeral=True,
@@ -674,6 +726,8 @@ class OrderView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="✖️", row=4)
     async def cancel_order(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
+        if self.on_close:
+            self.on_close()
         try:
             await interaction.message.delete()
         except discord.NotFound:

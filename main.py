@@ -6,14 +6,14 @@ from ui_components import OrderView
 # ----------------- DISCORD BOT SETUP -----------------
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = False       # We never need the full member cache
+intents.presences = False     # Presence updates are pure overhead here
 
 bot = commands.Bot(
     command_prefix="!",
     intents=intents,
-    # ---- Memory optimizations (no logic changes) ----
-    max_messages=200,                                     # default is 1000; we don't need a big message cache
-    member_cache_flags=discord.MemberCacheFlags.none(),   # we never look users up via the member cache
-    chunk_guilds_at_startup=False,                        # skip fetching full member lists on boot
+    max_messages=100,          # Default is 1000 cached messages; we never read history
+    chunk_guilds_at_startup=False,  # Skip building the full member cache on boot
 )
 
 # Remove the default help command to use our custom one
@@ -21,12 +21,6 @@ bot.remove_command('help')
 
 # Track active order panels per (user_id, channel_id) to auto-close old ones
 active_order_messages = {}
-
-
-def clear_active_order(user_id, channel_id):
-    """Remove a tracked order panel entry so the dict doesn't grow forever."""
-    active_order_messages.pop((user_id, channel_id), None)
-
 
 # ----------------- BOT COMMANDS -----------------
 @bot.event
@@ -56,7 +50,7 @@ async def help(ctx):
               "• **Modals:** Use the blue buttons to type in Character/Weapon upgrades.",
         inline=False
     )
-
+    
     embed.add_field(
         name="🗑️ 2. Fixing Mistakes",
         value="Added the wrong character levels? Click **Clear Custom Upgrades** in the `!order` menu to wipe your custom additions and try again.",
@@ -82,7 +76,7 @@ async def help(ctx):
     )
 
     embed.set_footer(text="Atsumi Piloting Services • Type !order to begin!")
-
+    
     await ctx.send(embed=embed)
 
 
@@ -101,7 +95,7 @@ async def order(ctx):
         except discord.NotFound:
             pass
 
-    view = OrderView(cleanup_callback=lambda: clear_active_order(ctx.author.id, ctx.channel.id))
+    view = OrderView(on_close=lambda: active_order_messages.pop(user_key, None))
     new_msg = await ctx.send(
         f"**Welcome to Atsumi Piloting Services, {ctx.author.mention}!**\n"
         "Customize your commission bundle below by selecting options from the menus or clicking the upgrade buttons, then click confirm.",
