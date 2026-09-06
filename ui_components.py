@@ -84,6 +84,10 @@ class ExplorationSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         self.view.selected_exploration = self.values
+        # Reflect the new selection back onto this dropdown's own options so it
+        # doesn't visually reset to blank when the message re-renders.
+        for opt in self.options:
+            opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
         await interaction.followup.send(
@@ -113,6 +117,10 @@ class SpecialAreaSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         self.view.selected_special = self.values
+        # Same fix as ExplorationSelect: keep this dropdown's own options
+        # marked as selected so the choice visibly persists.
+        for opt in self.options:
+            opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
         await interaction.followup.send(
@@ -127,8 +135,10 @@ class WorldQuestSelect(discord.ui.Select):
         super().__init__(placeholder="Select Required World Quests...", min_values=0, max_values=1, options=options, disabled=True)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         self.view.selected_world_quests = self.values
+        for opt in self.options:
+            opt.default = opt.value in self.values
+        await interaction.response.edit_message(view=self.view)
         await interaction.followup.send(f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
 
@@ -145,8 +155,10 @@ class MaintenanceSelect(discord.ui.Select):
         super().__init__(placeholder="Select Other Character Maintenance...", min_values=0, max_values=len(options), options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         self.view.selected_maintenance = self.values
+        for opt in self.options:
+            opt.default = opt.value in self.values
+        await interaction.response.edit_message(view=self.view)
         await interaction.followup.send(f"Updated maintenance choices: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
 
@@ -230,6 +242,27 @@ class ArtifactBuildingModal(discord.ui.Modal, title="Artifact Building"):
             await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
+
+
+class UpgradeTypeView(discord.ui.View):
+    """Small ephemeral picker so the main cart only needs one 'Upgrade' button
+    instead of three (Ascension / Weapon / Artifact), keeping row 4 under the
+    5-item Discord limit."""
+    def __init__(self, cart_view):
+        super().__init__(timeout=60)
+        self.cart_view = cart_view
+
+    @discord.ui.button(label="Character Ascension", style=discord.ButtonStyle.blurple, emoji="📈")
+    async def pick_ascension(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(CharacterAscensionModal(self.cart_view))
+
+    @discord.ui.button(label="Weapon", style=discord.ButtonStyle.blurple, emoji="⚔️")
+    async def pick_weapon(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(WeaponUpgradeModal(self.cart_view))
+
+    @discord.ui.button(label="Artifact", style=discord.ButtonStyle.blurple, emoji="🏺")
+    async def pick_artifact(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ArtifactBuildingModal(self.cart_view))
 
 
 class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
@@ -473,17 +506,13 @@ class OrderView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
-    @discord.ui.button(label="Ascension", style=discord.ButtonStyle.blurple, emoji="📈", row=4)
-    async def add_ascension(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(CharacterAscensionModal(self))
-
-    @discord.ui.button(label="Weapon", style=discord.ButtonStyle.blurple, emoji="⚔️", row=4)
-    async def add_weapon(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(WeaponUpgradeModal(self))
-
-    @discord.ui.button(label="Artifact", style=discord.ButtonStyle.blurple, emoji="🏺", row=4)
-    async def add_artifact(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ArtifactBuildingModal(self))
+    @discord.ui.button(label="+ Upgrade", style=discord.ButtonStyle.blurple, emoji="🛠️", row=4)
+    async def add_upgrade(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Which type of upgrade would you like to add?",
+            view=UpgradeTypeView(self),
+            ephemeral=True,
+        )
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
