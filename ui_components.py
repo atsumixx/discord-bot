@@ -1,5 +1,6 @@
 import discord
 import re
+import asyncio
 
 # ----------------- DYNAMIC WORLD QUEST DATA -----------------
 # Maps base regions to their specific World Quests
@@ -56,84 +57,68 @@ def extract_price(item_str):
     match = re.search(r'\(\$([\d.]+)\)', item_str)
     return float(match.group(1)) if match else 0.0
 
-
-# ----------------- PRECOMPUTED STATIC SELECT OPTIONS -----------------
-# Built once at import time instead of being rebuilt on every dropdown
-# interaction (labels/descriptions/emojis never change at runtime).
-_EXPLORATION_OPTION_DEFS = [
-    ("Mondstadt", "$10.00", "🍃", "Mondstadt ($10)"),
-    ("Mondstadt (>50% Exploration)", "$6.50", "🍃", "Mondstadt (>50%) ($6.50)"),
-    ("Liyue", "$15.00", "🔶", "Liyue ($15)"),
-    ("Liyue (>50% Exploration)", "$9.75", "🔶", "Liyue (>50%) ($9.75)"),
-    ("Inazuma", "$25.00", "⚡", "Inazuma ($25)"),
-    ("Inazuma (>50% Exploration)", "$16.25", "⚡", "Inazuma (>50%) ($16.25)"),
-    ("Sumeru (Forest & Desert)", "$90.00", "🌿", "Sumeru ($90)"),
-    ("Sumeru (>50% Exploration)", "$58.50", "🌿", "Sumeru (>50%) ($58.50)"),
-    ("Fontaine", "$40.00", "💧", "Fontaine ($40)"),
-    ("Fontaine (>50% Exploration)", "$26.00", "💧", "Fontaine (>50%) ($26.00)"),
-    ("Natlan", "$45.00", "🔥", "Natlan ($45)"),
-    ("Natlan (>50% Exploration)", "$29.25", "🔥", "Natlan (>50%) ($29.25)"),
-    ("Nod Krai", "$45.00", "🌌", "Nod Krai ($45)"),
-    ("Nod Krai (>50% Exploration)", "$29.25", "🌌", "Nod Krai (>50%) ($29.25)"),
-]
-
-_SPECIAL_OPTION_DEFS = [
-    ("Dragonspine", "$8.00", "🏔️", "Dragonspine ($8)"),
-    ("Windrest Peak", "$10.00", "⛰️", "Windrest Peak ($10)"),
-    ("Temple of Space", "$10.00", "🏛️", "Temple of Space ($10)"),
-    ("Chasm (with underground)", "$13.00", "🕳️", "Chasm ($13)"),
-    ("Chenyu Vale", "$13.00", "🍵", "Chenyu Vale ($13)"),
-    ("Enkanomiya", "$15.00", "💠", "Enkanomiya ($15)"),
-    ("Sea of Bygone Eras", "$13.00", "🐚", "Sea of Bygone Eras ($13)"),
-    ("Ancient Sacred Mountain", "$13.00", "🌋", "Ancient Sacred Mountain ($13)"),
-    ("Frost Moon", "$13.00", "🌕", "Frost Moon ($13)"),
-]
-
-_MAINTENANCE_OPTION_DEFS = [
-    ("Artifacts Building (Resin)", "$1.50", "🏺", "Artifacts Building ($1.50)"),
-    ("Talent Building (1-6)", "$0.50", "📜", "Talent Building 1-6 ($0.50)"),
-    ("Talent Building (7-10)", "$2.00", "✨", "Talent Building 7-10 ($2.00)"),
-]
-
-
-def _build_options(defs, default_values):
-    """Build SelectOption objects from static defs, marking defaults on the fly.
-    New objects are still created per-call (Discord mutates `.default` on them
-    and options must be fresh per Select instance), but the string data itself
-    is drawn from module-level constants instead of being re-typed/allocated
-    as literals inside __init__ every time."""
-    options = []
-    for label, desc, emoji, value in defs:
-        opt = discord.SelectOption(label=label, description=desc, emoji=emoji, value=value)
-        if value in default_values:
-            opt.default = True
-        options.append(opt)
-    return options
-
-
 # ----------------- DROPDOWN SELECT MENUS -----------------
 class ExplorationSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
-        options = _build_options(_EXPLORATION_OPTION_DEFS, default_values)
+        options = [
+            discord.SelectOption(label="Mondstadt", description="$10.00", emoji="🍃", value="Mondstadt ($10)"),
+            discord.SelectOption(label="Mondstadt (>50% Exploration)", description="$6.50", emoji="🍃", value="Mondstadt (>50%) ($6.50)"),
+            discord.SelectOption(label="Liyue", description="$15.00", emoji="🔶", value="Liyue ($15)"),
+            discord.SelectOption(label="Liyue (>50% Exploration)", description="$9.75", emoji="🔶", value="Liyue (>50%) ($9.75)"),
+            discord.SelectOption(label="Inazuma", description="$25.00", emoji="⚡", value="Inazuma ($25)"),
+            discord.SelectOption(label="Inazuma (>50% Exploration)", description="$16.25", emoji="⚡", value="Inazuma (>50%) ($16.25)"),
+            discord.SelectOption(label="Sumeru (Forest & Desert)", description="$90.00", emoji="🌿", value="Sumeru ($90)"),
+            discord.SelectOption(label="Sumeru (>50% Exploration)", description="$58.50", emoji="🌿", value="Sumeru (>50%) ($58.50)"),
+            discord.SelectOption(label="Fontaine", description="$40.00", emoji="💧", value="Fontaine ($40)"),
+            discord.SelectOption(label="Fontaine (>50% Exploration)", description="$26.00", emoji="💧", value="Fontaine (>50%) ($26.00)"),
+            discord.SelectOption(label="Natlan", description="$45.00", emoji="🔥", value="Natlan ($45)"),
+            discord.SelectOption(label="Natlan (>50% Exploration)", description="$29.25", emoji="🔥", value="Natlan (>50%) ($29.25)"),
+            discord.SelectOption(label="Nod Krai", description="$45.00", emoji="🌌", value="Nod Krai ($45)"), # Update this price if needed
+            discord.SelectOption(label="Nod Krai (>50% Exploration)", description="$29.25", emoji="🌌", value="Nod Krai (>50%) ($29.25)"),
+        ]
+        for opt in options:
+            if opt.value in default_values:
+                opt.default = True
         super().__init__(placeholder="Select Normal Exploration...", min_values=0, max_values=min(len(options), 25), options=options)
 
     async def callback(self, interaction: discord.Interaction):
         self.view.selected_exploration = self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
+        await interaction.followup.send(
+            f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}",
+            ephemeral=True,
+        )
 
 
 class SpecialAreaSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
-        options = _build_options(_SPECIAL_OPTION_DEFS, default_values)
+        options = [
+            discord.SelectOption(label="Dragonspine", description="$8.00", emoji="🏔️", value="Dragonspine ($8)"),
+            discord.SelectOption(label="Windrest Peak", description="$10.00", emoji="⛰️", value="Windrest Peak ($10)"),
+            discord.SelectOption(label="Temple of Space", description="$10.00", emoji="🏛️", value="Temple of Space ($10)"),
+            discord.SelectOption(label="Chasm (with underground)", description="$13.00", emoji="🕳️", value="Chasm ($13)"),
+            discord.SelectOption(label="Chenyu Vale", description="$13.00", emoji="🍵", value="Chenyu Vale ($13)"),
+            discord.SelectOption(label="Enkanomiya", description="$15.00", emoji="💠", value="Enkanomiya ($15)"),
+            discord.SelectOption(label="Sea of Bygone Eras", description="$13.00", emoji="🐚", value="Sea of Bygone Eras ($13)"),
+            discord.SelectOption(label="Ancient Sacred Mountain", description="$13.00", emoji="🌋", value="Ancient Sacred Mountain ($13)"),
+            discord.SelectOption(label="Frost Moon", description="$13.00", emoji="🌕", value="Frost Moon ($13)"),
+        ]
+        for opt in options:
+            if opt.value in default_values:
+                opt.default = True
         super().__init__(placeholder="Select Special Areas...", min_values=0, max_values=min(len(options), 25), options=options)
 
     async def callback(self, interaction: discord.Interaction):
         self.view.selected_special = self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
+        await interaction.followup.send(
+            f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}",
+            ephemeral=True,
+        )
 
 
 class WorldQuestSelect(discord.ui.Select):
@@ -150,7 +135,13 @@ class WorldQuestSelect(discord.ui.Select):
 class MaintenanceSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
-        options = _build_options(_MAINTENANCE_OPTION_DEFS, default_values)
+        options = [
+            discord.SelectOption(label="Talent Building (1-6)", description="$0.50", emoji="📜", value="Talent Building 1-6 ($0.50)"),
+            discord.SelectOption(label="Talent Building (7-10)", description="$2.00", emoji="✨", value="Talent Building 7-10 ($2.00)"),
+        ]
+        for opt in options:
+            if opt.value in default_values:
+                opt.default = True
         super().__init__(placeholder="Select Other Character Maintenance...", min_values=0, max_values=len(options), options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -214,6 +205,33 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
 
+class ArtifactBuildingModal(discord.ui.Modal, title="Artifact Building"):
+    slot_name = discord.ui.TextInput(label="Artifact Slot / Set", placeholder="e.g., Flower, Feather, Sands...", required=True, max_length=50)
+    current_lvl = discord.ui.TextInput(label="Current Level (0-20)", placeholder="e.g., 0", required=True, max_length=2)
+    target_lvl = discord.ui.TextInput(label="Target Level (0-20)", placeholder="e.g., 20", required=True, max_length=2)
+
+    def __init__(self, cart_view):
+        super().__init__()
+        self.cart_view = cart_view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            curr = int(self.current_lvl.value)
+            targ = int(self.target_lvl.value)
+            if curr >= targ or curr < 0 or targ > 20:
+                await interaction.response.send_message("⚠️ Invalid levels! Levels must be between 0-20.", ephemeral=True)
+                return
+            # $1.50 for a full 0->20 build, so $0.075 per level of enhancement
+            price_per_level = 1.50 / 20
+            price = (targ - curr) * price_per_level
+            cart_item = f"Artifact: {self.slot_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
+            self.cart_view.custom_maintenance.append(cart_item)
+            self.cart_view.total_custom_price += price
+            await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
+
+
 class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
     feedback = discord.ui.TextInput(
         label="Service & Pilot Feedback",
@@ -232,7 +250,7 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         done_channel = discord.utils.get(guild.text_channels, name="done-deal✔️")
-
+        
         if done_channel:
             webhooks = await done_channel.webhooks()
             webhook = discord.utils.get(webhooks, name="PaimonLogger")
@@ -252,7 +270,7 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
             )
             embed.set_footer(text="Atsumi Piloting Services • Deal Completed Successfully")
             await done_channel.send(embed=embed)
-
+            
             if isinstance(interaction.channel, discord.Thread):
                 try:
                     await interaction.channel.edit(name=f"done-{interaction.channel.name}", archived=True, locked=True)
@@ -288,7 +306,7 @@ class JobBoardView(discord.ui.View):
         for child in self.children:
             if getattr(child, "custom_id", "") == "resolve_btn":
                 child.disabled = False
-
+        
         current_content = interaction.message.content
         new_msg = current_content.replace("🔴 **Status:** Open", "🟡 **Status:** In Progress")
         new_msg = new_msg.replace("✈️ **Pilot:** Unassigned", f"✈️ **Pilot:** {self.pilot.mention}")
@@ -322,8 +340,8 @@ class ThreadManagementView(discord.ui.View):
     @discord.ui.button(label="Edit / Replace Order", style=discord.ButtonStyle.secondary, emoji="✏️", row=0)
     async def edit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = OrderView(
-            is_edit=True,
-            job_message=self.job_message,
+            is_edit=True, 
+            job_message=self.job_message, 
             summary_message=self.summary_message,
             initial_expl=self.prev_expl,
             initial_special=self.prev_special,
@@ -343,17 +361,14 @@ class ThreadManagementView(discord.ui.View):
 
 # ----------------- MAIN CART / ORDER VIEW -----------------
 class OrderView(discord.ui.View):
-    def __init__(self, is_edit=False, job_message=None, summary_message=None,
-                 initial_expl=None, initial_special=None, initial_wq=None, initial_maint=None,
-                 initial_custom=None, initial_custom_price=0.0, cleanup_callback=None):
-        super().__init__(timeout=180)
+    def __init__(self, is_edit=False, job_message=None, summary_message=None, 
+                 initial_expl=None, initial_special=None, initial_wq=None, initial_maint=None, initial_custom=None, initial_custom_price=0.0):
+        super().__init__(timeout=180) 
         self.is_edit = is_edit
         self.job_message = job_message
         self.summary_message = summary_message
-        # Called once the panel is no longer needed (submitted/cancelled/timed out)
-        # so the caller can drop its tracking reference (e.g. active_order_messages).
-        self.cleanup_callback = cleanup_callback
-
+        self.message = None
+        
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
         self.selected_world_quests = initial_wq or []
@@ -370,19 +385,14 @@ class OrderView(discord.ui.View):
         self.add_item(self.wq_select)
         # Row 3
         self.add_item(MaintenanceSelect(default_values=self.selected_maintenance))
-
+        
         # Initialize WQ options dynamically based on initial values if editing
         self.update_world_quest_dropdown()
 
-    def _run_cleanup(self):
-        if self.cleanup_callback:
-            try:
-                self.cleanup_callback()
-            except Exception:
-                pass
-
     def update_world_quest_dropdown(self):
-        all_selected = self.selected_exploration + self.selected_special
+        # Preserve the order regions were picked in each dropdown so quests group
+        # underneath their region, region by region, in the order selected.
+        all_selected = list(self.selected_exploration) + list(self.selected_special)
         available_quests = []
 
         for region_val in all_selected:
@@ -390,16 +400,24 @@ class OrderView(discord.ui.View):
             clean_name = region_val.split(" (")[0].strip()
 
             if clean_name in ["Mondstadt", "Windrest Peak"]:
-                quests = WQ_DATA.get("Mondstadt", [])
+                region_key = "Mondstadt"
             elif clean_name == "Sumeru":
-                quests = WQ_DATA.get("Sumeru", [])
+                region_key = "Sumeru"
             else:
-                quests = WQ_DATA.get(clean_name, [])
+                region_key = clean_name
+
+            quests = WQ_DATA.get(region_key, [])
+            if not quests:
+                continue
 
             for q in quests:
-                # Append if not already in list
+                # Prefix the option label with its region so the dropdown reads
+                # like grouped categories, e.g. "「Mondstadt」 A long day in the mountain"
+                grouped_label = f"「{region_key}」 {q['label']}"
                 if not any(opt.value == q["val"] for opt in available_quests):
-                    available_quests.append(discord.SelectOption(label=q["label"], description=q["desc"], value=q["val"]))
+                    available_quests.append(
+                        discord.SelectOption(label=grouped_label[:100], description=q["desc"], value=q["val"])
+                    )
 
         if not available_quests:
             self.wq_select.options = [discord.SelectOption(label="Select a region first...", value="none")]
@@ -407,10 +425,10 @@ class OrderView(discord.ui.View):
             self.wq_select.max_values = 1
             self.selected_world_quests = []
         else:
-            self.wq_select.options = available_quests[:25]  # Hard limit to prevent Discord crashes
+            self.wq_select.options = available_quests[:25] # Hard limit to prevent Discord crashes
             self.wq_select.disabled = False
             self.wq_select.max_values = len(self.wq_select.options)
-
+            
             # Preserve valid active selections if menu changes
             valid_vals = [opt.value for opt in self.wq_select.options]
             self.selected_world_quests = [v for v in self.selected_world_quests if v in valid_vals]
@@ -418,16 +436,42 @@ class OrderView(discord.ui.View):
                 if opt.value in self.selected_world_quests:
                     opt.default = True
 
+    def regions_missing_world_quests(self):
+        """Returns region names that were selected but have required WQs not yet chosen."""
+        all_selected = list(self.selected_exploration) + list(self.selected_special)
+        missing = []
+        for region_val in all_selected:
+            clean_name = region_val.split(" (")[0].strip()
+            if clean_name in ["Mondstadt", "Windrest Peak"]:
+                region_key = "Mondstadt"
+            elif clean_name == "Sumeru":
+                region_key = "Sumeru"
+            else:
+                region_key = clean_name
+
+            quests = WQ_DATA.get(region_key, [])
+            if not quests:
+                continue
+            quest_vals = {q["val"] for q in quests}
+            if not (quest_vals & set(self.selected_world_quests)):
+                if region_key not in missing:
+                    missing.append(region_key)
+        return missing
+
     async def on_timeout(self):
         for child in self.children:
             child.disabled = True
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
+                # Give the person a moment to see it, then clean it up so it
+                # doesn't sit around and flood the channel.
+                await asyncio.sleep(8)
+                await self.message.delete()
             except discord.NotFound:
                 pass
-        # Panel is dead either way — stop tracking it.
-        self._run_cleanup()
+            except discord.HTTPException:
+                pass
 
     @discord.ui.button(label="Ascension", style=discord.ButtonStyle.blurple, emoji="📈", row=4)
     async def add_ascension(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -436,6 +480,10 @@ class OrderView(discord.ui.View):
     @discord.ui.button(label="Weapon", style=discord.ButtonStyle.blurple, emoji="⚔️", row=4)
     async def add_weapon(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(WeaponUpgradeModal(self))
+
+    @discord.ui.button(label="Artifact", style=discord.ButtonStyle.blurple, emoji="🏺", row=4)
+    async def add_artifact(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ArtifactBuildingModal(self))
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -457,6 +505,8 @@ class OrderView(discord.ui.View):
         for item in all_items:
             total_price += extract_price(item)
 
+        missing_wq_regions = self.regions_missing_world_quests()
+
         summary = f"📋 **{'Updated' if self.is_edit else 'New'} Commission Order from {interaction.user.mention}**\n"
         if self.selected_exploration:
             summary += f"\n🗺️ **Normal Exploration:**\n- " + "\n- ".join(self.selected_exploration) + "\n"
@@ -469,6 +519,11 @@ class OrderView(discord.ui.View):
         if self.selected_maintenance:
             summary += f"\n⚔️ **Other Maintenance:**\n- " + "\n- ".join(self.selected_maintenance) + "\n"
         summary += f"\n💰 **Estimated Total:** `${total_price:.2f}`"
+        if missing_wq_regions:
+            summary += (
+                f"\n⚠️ **Heads up:** {', '.join(missing_wq_regions)} has required World Quests "
+                "that were not selected. Exploration will NOT reach 100% without them."
+            )
         summary += "\n💳 *Please coordinate payment with management here before piloting begins.*"
 
         try:
@@ -484,7 +539,7 @@ class OrderView(discord.ui.View):
                     prev_custom_price=self.total_custom_price
                 )
                 new_thread_view.summary_message = self.summary_message
-
+                
                 if self.summary_message:
                     await self.summary_message.edit(content=summary, view=new_thread_view)
 
@@ -497,7 +552,7 @@ class OrderView(discord.ui.View):
                             status_line = line
                         elif "**Pilot:**" in line:
                             pilot_line = line
-
+                    
                     job_board_msg = (
                         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"🆕 **Job Updated!**\n"
@@ -584,9 +639,6 @@ class OrderView(discord.ui.View):
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
                 ephemeral=True,
             )
-
-            # Order panel served its purpose — stop tracking it.
-            self._run_cleanup()
         except Exception as e:
             await interaction.followup.send(f"⚠️ Failed to process order. Error: {e}", ephemeral=True)
 
@@ -597,5 +649,3 @@ class OrderView(discord.ui.View):
             await interaction.message.delete()
         except discord.NotFound:
             pass
-        # Panel closed — stop tracking it.
-        self._run_cleanup()
