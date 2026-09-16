@@ -6,7 +6,9 @@ from ui_components import OrderView
 # ----------------- DISCORD BOT SETUP -----------------
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = False       # We never need the full member cache
+intents.members = True        # Required for on_member_join to fire (welcome DM).
+                               # Must also be enabled as "Server Members Intent"
+                               # in the Discord Developer Portal for this bot.
 intents.presences = False     # Presence updates are pure overhead here
 
 bot = commands.Bot(
@@ -27,6 +29,88 @@ active_order_messages = {}
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     print("Bot is online!")
+
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    if member.bot:
+        return  # Don't DM other bots
+
+    embed = discord.Embed(
+        title="🌟 Welcome to Atsumi Piloting Services!",
+        description=(
+            f"Hey {member.mention}, welcome to the server! I'm **Paimon**, "
+            "here to help you get set up with a commission whenever you're ready."
+        ),
+        color=discord.Color.from_rgb(255, 182, 193)  # Soft pink theme
+    )
+
+    embed.add_field(
+        name="🗺️ What We Offer",
+        value=(
+            "Atsumi Piloting Services provides professional Genshin Impact piloting "
+            "for:\n"
+            "• **Map Exploration** — Mondstadt, Liyue, Inazuma, Sumeru, Fontaine, "
+            "Natlan, Nod Krai, and more\n"
+            "• **Special Areas** — Dragonspine, Chasm, Enkanomiya, and other "
+            "sub-regions\n"
+            "• **World Quests** — Region-specific quests needed to fully complete "
+            "your exploration\n"
+            "• **Character Maintenance** — Character ascension, weapon upgrades, "
+            "artifact building, and talent leveling"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🛒 How To Order",
+        value=(
+            "Type `!order` in any commission channel to open your interactive "
+            "cart. From there you can:\n"
+            "• Pick regions and special areas from the dropdown menus\n"
+            "• Add required World Quests as they appear\n"
+            "• Use the **+ Upgrade** button to add Character, Weapon, Artifact, "
+            "or Talent building via quick forms\n"
+            "• Hit **Submit** to confirm — this opens a private thread just for "
+            "you and posts the job for our pilots\n\n"
+            "Use `!help` any time for the full guide."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="📜 Server Rules & Regulations",
+        value=(
+            "To keep every transaction safe and professional, please follow "
+            "these rules:\n"
+            "1️⃣ All payments and account details are handled **only** in your "
+            "private order thread with management or your assigned pilot.\n"
+            "2️⃣ Never share your account password outside of the coordination "
+            "steps management asks for — legitimate pilots will never ask you "
+            "to change your account email or security settings.\n"
+            "3️⃣ Payment is arranged **after** your order thread is created — "
+            "do not send payment to anyone before that.\n"
+            "4️⃣ Be respectful to staff, pilots, and other clients at all times.\n"
+            "5️⃣ Do not advertise outside services or attempt to arrange deals "
+            "off-platform.\n"
+            "6️⃣ Report any suspicious behavior to a staff member immediately.\n"
+            "7️⃣ Orders must be submitted through the `!order` menu — this keeps "
+            "pricing accurate and every job tracked."
+        ),
+        inline=False
+    )
+
+    embed.set_footer(text="Atsumi Piloting Services • Type !order to begin your commission!")
+    if member.guild.icon:
+        embed.set_thumbnail(url=member.guild.icon.url)
+
+    try:
+        await member.send(embed=embed)
+    except discord.Forbidden:
+        # User has DMs disabled for the server / blocked the bot — nothing more we can do.
+        print(f"[on_member_join] Could not DM {member} (DMs closed).")
+    except discord.HTTPException as e:
+        print(f"[on_member_join] Failed to DM {member}: {e}")
 
 
 @bot.command()
