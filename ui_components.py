@@ -90,10 +90,8 @@ class ExplorationSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(
-            f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
-        )
+        text = f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}"
+        await self.view.update_status_message(interaction, text)
 
 
 class SpecialAreaSelect(discord.ui.Select):
@@ -132,10 +130,8 @@ class SpecialAreaSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(
-            f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
-        )
+        text = f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}"
+        await self.view.update_status_message(interaction, text)
 
 
 class WorldQuestSelect(discord.ui.Select):
@@ -148,7 +144,8 @@ class WorldQuestSelect(discord.ui.Select):
         for opt in self.options:
             opt.default = opt.value in self.values
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
+        text = f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}"
+        await self.view.update_status_message(interaction, text)
 
 
 # ----------------- MODALS -----------------
@@ -452,7 +449,8 @@ class OrderView(discord.ui.View):
         self.on_close = on_close  # Optional callback to free tracking entries (e.g. active_order_messages)
         self.summary_message = summary_message
         self.message = None
-        
+        self.status_message = None  # Tracks the single reusable ephemeral "Updated..." confirmation
+
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
         self.selected_world_quests = initial_wq or []
@@ -485,6 +483,30 @@ class OrderView(discord.ui.View):
                 await interaction.response.send_message("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
         except discord.HTTPException:
             pass
+
+    async def update_status_message(self, interaction: discord.Interaction, text: str):
+        """Edit the existing ephemeral status message instead of sending a new
+        one every time a dropdown changes. Falls back to sending a fresh one
+        if the old one no longer exists (e.g. the user dismissed it)."""
+        if self.status_message:
+            try:
+                await self.status_message.edit(content=text)
+                return
+            except discord.NotFound:
+                self.status_message = None
+        self.status_message = await interaction.followup.send(text, ephemeral=True)
+
+    async def clear_status_message(self):
+        """Deletes the tracked ephemeral status message, if any. Used when the
+        cart is cancelled/submitted/timed out so it doesn't linger."""
+        if self.status_message:
+            try:
+                await self.status_message.delete()
+            except discord.NotFound:
+                pass
+            except discord.HTTPException:
+                pass
+            self.status_message = None
 
     def update_world_quest_dropdown(self):
         # Preserve the order regions were picked in each dropdown so quests group
@@ -560,6 +582,7 @@ class OrderView(discord.ui.View):
             child.disabled = True
         if self.on_close:
             self.on_close()
+        await self.clear_status_message()
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -584,7 +607,8 @@ class OrderView(discord.ui.View):
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
-        await interaction.response.send_message("✅ Upgrades cleared.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        await self.update_status_message(interaction, "✅ Upgrades cleared.")
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, emoji="✅", row=4)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -666,6 +690,7 @@ class OrderView(discord.ui.View):
                     )
                     await self.job_message.edit(content=job_board_msg)
 
+                await self.clear_status_message()
                 await interaction.followup.send("✅ Your order has been successfully updated!", ephemeral=True)
                 if self.message:
                     try:
@@ -725,6 +750,7 @@ class OrderView(discord.ui.View):
             if self.on_close:
                 self.on_close()
 
+            await self.clear_status_message()
             await interaction.followup.send(
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
                 ephemeral=True,
@@ -737,6 +763,7 @@ class OrderView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         if self.on_close:
             self.on_close()
+        await self.clear_status_message()
         try:
             await interaction.message.delete()
         except discord.NotFound:
