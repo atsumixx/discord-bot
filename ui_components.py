@@ -470,6 +470,12 @@ class CancelConfirmView(discord.ui.View):
             except (discord.NotFound, discord.HTTPException):
                 pass
 
+        if ov.upgrade_picker_message:
+            try:
+                await ov.upgrade_picker_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
         if ov.on_close:
             ov.on_close()
 
@@ -536,6 +542,9 @@ class OrderView(discord.ui.View):
         # The receipt shown by the Submit button while awaiting confirmation,
         # so Cancel (and timeout) can clean it up too if it's still open.
         self.receipt_message = None
+        # Tracks the ephemeral "which upgrade type?" picker so a second click
+        # of + Upgrade hides it instead of stacking a duplicate on top.
+        self.upgrade_picker_message = None
 
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
@@ -574,6 +583,10 @@ class OrderView(discord.ui.View):
         """Render the full current selection state (not just the latest change),
         so the single status message always shows everything picked so far
         instead of the newest change overwriting the previous ones."""
+        total = self.total_custom_price
+        for item in self.selected_exploration + self.selected_special + self.selected_world_quests:
+            total += extract_price(item)
+
         lines = ["🧾 **Current Selections**"]
         lines.append(
             f"🗺️ Normal Exploration: {', '.join(self.selected_exploration) if self.selected_exploration else 'None'}"
@@ -587,6 +600,7 @@ class OrderView(discord.ui.View):
         lines.append(
             f"🛠️ Upgrades: {', '.join(self.custom_maintenance) if self.custom_maintenance else 'None'}"
         )
+        lines.append(f"\n💰 **Running Total:** `${total:.2f}`")
         return "\n".join(lines)
 
     async def send_status(self, interaction: discord.Interaction, content: str):
@@ -695,6 +709,11 @@ class OrderView(discord.ui.View):
                 await self.receipt_message.delete()
             except (discord.NotFound, discord.HTTPException):
                 pass
+        if self.upgrade_picker_message:
+            try:
+                await self.upgrade_picker_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -709,11 +728,21 @@ class OrderView(discord.ui.View):
 
     @discord.ui.button(label="+ Upgrade", style=discord.ButtonStyle.blurple, emoji="🛠️", row=4)
     async def add_upgrade(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.upgrade_picker_message:
+            try:
+                await self.upgrade_picker_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+            self.upgrade_picker_message = None
+            await interaction.response.defer(ephemeral=True)
+            return
+
         await interaction.response.send_message(
             "Which type of upgrade would you like to add?",
             view=UpgradeTypeView(self),
             ephemeral=True,
         )
+        self.upgrade_picker_message = await interaction.original_response()
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -902,3 +931,4 @@ class OrderView(discord.ui.View):
             view=CancelConfirmView(self),
             ephemeral=True,
         )
+        
