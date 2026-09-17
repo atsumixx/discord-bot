@@ -91,9 +91,9 @@ class ExplorationSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(
+        await self.view.send_status(
+            interaction,
             f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
         )
 
 
@@ -134,9 +134,9 @@ class SpecialAreaSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(
+        await self.view.send_status(
+            interaction,
             f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}",
-            ephemeral=True,
         )
 
 
@@ -150,7 +150,10 @@ class WorldQuestSelect(discord.ui.Select):
         for opt in self.options:
             opt.default = opt.value in self.values
         await interaction.response.edit_message(view=self.view)
-        await interaction.followup.send(f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
+        await self.view.send_status(
+            interaction,
+            f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}",
+        )
 
 
 # ----------------- MODALS -----------------
@@ -176,7 +179,7 @@ class CharacterAscensionModal(discord.ui.Modal, title="Character Ascension"):
             cart_item = f"Char: {self.char_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
+            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -203,7 +206,7 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             cart_item = f"Weapon: {self.weapon_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
+            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -230,7 +233,7 @@ class ArtifactBuildingModal(discord.ui.Modal, title="Artifact Building"):
             cart_item = f"Artifact: {self.slot_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
+            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -259,7 +262,7 @@ class TalentBuildingModal(discord.ui.Modal, title="Talent Building"):
             cart_item = f"Talent: {self.char_name.value} - {self.talent_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await interaction.response.send_message(f"✅ Added: **{cart_item}**", ephemeral=True)
+            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -454,7 +457,11 @@ class OrderView(discord.ui.View):
         self.on_close = on_close  # Optional callback to free tracking entries (e.g. active_order_messages)
         self.summary_message = summary_message
         self.message = None
-        
+        # Single ephemeral message that gets edited in place for every dropdown
+        # change / upgrade added, instead of sending a fresh ephemeral message
+        # each time (which floods the channel and forces scrolling).
+        self.status_message = None
+
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
         self.selected_world_quests = initial_wq or []
@@ -487,6 +494,28 @@ class OrderView(discord.ui.View):
                 await interaction.response.send_message("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
         except discord.HTTPException:
             pass
+
+    async def send_status(self, interaction: discord.Interaction, content: str):
+        """Show `content` as a single ephemeral status message that gets edited
+        in place on every subsequent call, instead of sending a brand new
+        ephemeral message each time (which flooded the channel and forced the
+        user to keep scrolling up/down)."""
+        if self.status_message:
+            try:
+                await self.status_message.edit(content=content)
+                if not interaction.response.is_done():
+                    # Still need to ack this interaction even though we
+                    # updated the message via the earlier interaction's token.
+                    await interaction.response.defer(ephemeral=True)
+                return
+            except (discord.NotFound, discord.HTTPException):
+                self.status_message = None
+
+        if interaction.response.is_done():
+            self.status_message = await interaction.followup.send(content, ephemeral=True, wait=True)
+        else:
+            await interaction.response.send_message(content, ephemeral=True)
+            self.status_message = await interaction.original_response()
 
     def update_world_quest_dropdown(self):
         # Preserve the order regions were picked in each dropdown so quests group
@@ -586,7 +615,7 @@ class OrderView(discord.ui.View):
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
-        await interaction.response.send_message("✅ Upgrades cleared.", ephemeral=True)
+        await self.send_status(interaction, "✅ Upgrades cleared.")
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, emoji="✅", row=4)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
