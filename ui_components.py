@@ -297,6 +297,12 @@ class UpgradeTypeView(discord.ui.View):
     async def pick_talent(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(TalentBuildingModal(self.cart_view))
 
+    @discord.ui.button(label="Clear Upgrades", style=discord.ButtonStyle.danger, emoji="🗑️")
+    async def clear_upgrades(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.cart_view.custom_maintenance = []
+        self.cart_view.total_custom_price = 0.0
+        await self.cart_view.send_status(interaction, self.cart_view.build_status_text())
+
 
 class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"):
     feedback = discord.ui.TextInput(
@@ -803,12 +809,6 @@ class OrderView(discord.ui.View):
         )
         self.upgrade_picker_message = await interaction.original_response()
         picker_view.message = self.upgrade_picker_message
-
-    @discord.ui.button(label="Clear Upgrades", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
-    async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.custom_maintenance = []
-        self.total_custom_price = 0.0
-        await self.send_status(interaction, self.build_status_text())
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, emoji="✅", row=4)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
