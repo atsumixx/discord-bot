@@ -596,9 +596,11 @@ class OrderView(discord.ui.View):
         self.total_custom_price = initial_custom_price
 
         # Row 0
-        self.add_item(ExplorationSelect(default_values=self.selected_exploration))
+        self.exploration_select = ExplorationSelect(default_values=self.selected_exploration)
+        self.add_item(self.exploration_select)
         # Row 1
-        self.add_item(SpecialAreaSelect(default_values=self.selected_special))
+        self.special_select = SpecialAreaSelect(default_values=self.selected_special)
+        self.add_item(self.special_select)
         # Row 2
         self.wq_select = WorldQuestSelect()
         self.add_item(self.wq_select)
@@ -769,6 +771,32 @@ class OrderView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
+    @discord.ui.button(label="Clear Exploration", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
+    async def clear_exploration(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.selected_exploration = []
+        for opt in self.exploration_select.options:
+            opt.default = False
+        self.update_world_quest_dropdown()
+        await interaction.response.edit_message(view=self)
+        await self.send_status(interaction, self.build_status_text())
+
+    @discord.ui.button(label="Clear Special Areas", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
+    async def clear_special(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.selected_special = []
+        for opt in self.special_select.options:
+            opt.default = False
+        self.update_world_quest_dropdown()
+        await interaction.response.edit_message(view=self)
+        await self.send_status(interaction, self.build_status_text())
+
+    @discord.ui.button(label="Clear World Quests", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
+    async def clear_world_quests(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.selected_world_quests = []
+        for opt in self.wq_select.options:
+            opt.default = False
+        await interaction.response.edit_message(view=self)
+        await self.send_status(interaction, self.build_status_text())
+
     @discord.ui.button(label="+ Upgrade", style=discord.ButtonStyle.blurple, emoji="🛠️", row=4)
     async def add_upgrade(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.upgrade_picker_message:
@@ -789,7 +817,7 @@ class OrderView(discord.ui.View):
         self.upgrade_picker_message = await interaction.original_response()
         picker_view.message = self.upgrade_picker_message
 
-    @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
+    @discord.ui.button(label="Clear Upgrades", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
