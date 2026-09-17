@@ -263,8 +263,23 @@ class UpgradeTypeView(discord.ui.View):
     instead of four (Ascension / Weapon / Artifact / Talent), keeping row 4 under the
     5-item Discord limit."""
     def __init__(self, cart_view):
-        super().__init__(timeout=60)
+        super().__init__(timeout=300)
         self.cart_view = cart_view
+        self.message = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        if self.cart_view:
+            self.cart_view.upgrade_picker_message = None
+        if self.message:
+            try:
+                await self.message.edit(
+                    content="⏱️ This upgrade picker timed out. Click **+ Upgrade** again to add another one.",
+                    view=self,
+                )
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
     @discord.ui.button(label="Character Ascension", style=discord.ButtonStyle.blurple, emoji="📈")
     async def pick_ascension(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -444,8 +459,21 @@ class CancelConfirmView(discord.ui.View):
     the order: the main cart panel and the shared status message."""
 
     def __init__(self, order_view: "OrderView"):
-        super().__init__(timeout=60)
+        super().__init__(timeout=300)
         self.order_view = order_view
+        self.message = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(
+                    content="⏱️ Cancel confirmation timed out — your order was kept. Click Cancel again if you still want to cancel it.",
+                    view=self,
+                )
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
     @discord.ui.button(label="Yes, Cancel Order", style=discord.ButtonStyle.red, emoji="✖️")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -499,10 +527,25 @@ class SubmitConfirmView(discord.ui.View):
     user can double check everything before it creates a thread / job post."""
 
     def __init__(self, order_view: "OrderView", summary: str, total_price: float):
-        super().__init__(timeout=120)
+        super().__init__(timeout=300)
         self.order_view = order_view
         self.summary = summary
         self.total_price = total_price
+        self.message = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        if self.order_view:
+            self.order_view.receipt_message = None
+        if self.message:
+            try:
+                await self.message.edit(
+                    content="⏱️ This receipt timed out and was not submitted. Click **Submit** again on your order to review it once more.",
+                    view=self,
+                )
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
     @discord.ui.button(label="Confirm & Submit", style=discord.ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -529,7 +572,7 @@ class OrderView(discord.ui.View):
     def __init__(self, is_edit=False, job_message=None, summary_message=None, 
                  initial_expl=None, initial_special=None, initial_wq=None, initial_custom=None, initial_custom_price=0.0,
                  on_close=None):
-        super().__init__(timeout=180) 
+        super().__init__(timeout=900)  # 15 minutes of inactivity, up from 3 — enough time to actually decide
         self.is_edit = is_edit
         self.job_message = job_message
         self.on_close = on_close  # Optional callback to free tracking entries (e.g. active_order_messages)
@@ -737,12 +780,14 @@ class OrderView(discord.ui.View):
             await interaction.response.defer(ephemeral=True)
             return
 
+        picker_view = UpgradeTypeView(self)
         await interaction.response.send_message(
             "Which type of upgrade would you like to add?",
-            view=UpgradeTypeView(self),
+            view=picker_view,
             ephemeral=True,
         )
         self.upgrade_picker_message = await interaction.original_response()
+        picker_view.message = self.upgrade_picker_message
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -784,12 +829,14 @@ class OrderView(discord.ui.View):
         summary += "\n💳 *Please coordinate payment with management here before piloting begins.*"
 
         receipt = "🧾 **Order Receipt — Please Review Before Confirming**\n" + summary
+        receipt_view = SubmitConfirmView(self, summary, total_price)
         self.receipt_message = await interaction.followup.send(
             content=receipt,
-            view=SubmitConfirmView(self, summary, total_price),
+            view=receipt_view,
             ephemeral=True,
             wait=True,
         )
+        receipt_view.message = self.receipt_message
 
     async def finalize_order(self, interaction: discord.Interaction, summary: str, total_price: float):
         """Actually places the order (creates/updates the thread + job post).
@@ -926,9 +973,10 @@ class OrderView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="✖️", row=4)
     async def cancel_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        confirm_view = CancelConfirmView(self)
         await interaction.response.send_message(
             "⚠️ Are you sure you want to cancel this order? All your selections will be discarded and this won't be recoverable.",
-            view=CancelConfirmView(self),
+            view=confirm_view,
             ephemeral=True,
         )
-        
+        confirm_view.message = await interaction.original_response()
