@@ -464,6 +464,12 @@ class CancelConfirmView(discord.ui.View):
             except (discord.NotFound, discord.HTTPException):
                 pass
 
+        if ov.receipt_message:
+            try:
+                await ov.receipt_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
         if ov.on_close:
             ov.on_close()
 
@@ -527,6 +533,9 @@ class OrderView(discord.ui.View):
         # change / upgrade added, instead of sending a fresh ephemeral message
         # each time (which floods the channel and forces scrolling).
         self.status_message = None
+        # The receipt shown by the Submit button while awaiting confirmation,
+        # so Cancel (and timeout) can clean it up too if it's still open.
+        self.receipt_message = None
 
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
@@ -681,6 +690,11 @@ class OrderView(discord.ui.View):
                 await self.status_message.delete()
             except (discord.NotFound, discord.HTTPException):
                 pass
+        if self.receipt_message:
+            try:
+                await self.receipt_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -741,10 +755,11 @@ class OrderView(discord.ui.View):
         summary += "\n💳 *Please coordinate payment with management here before piloting begins.*"
 
         receipt = "🧾 **Order Receipt — Please Review Before Confirming**\n" + summary
-        await interaction.followup.send(
+        self.receipt_message = await interaction.followup.send(
             content=receipt,
             view=SubmitConfirmView(self, summary, total_price),
             ephemeral=True,
+            wait=True,
         )
 
     async def finalize_order(self, interaction: discord.Interaction, summary: str, total_price: float):
