@@ -91,10 +91,7 @@ class ExplorationSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await self.view.send_status(
-            interaction,
-            f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}",
-        )
+        await self.view.send_status(interaction, self.view.build_status_text())
 
 
 class SpecialAreaSelect(discord.ui.Select):
@@ -134,10 +131,7 @@ class SpecialAreaSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        await self.view.send_status(
-            interaction,
-            f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}",
-        )
+        await self.view.send_status(interaction, self.view.build_status_text())
 
 
 class WorldQuestSelect(discord.ui.Select):
@@ -150,10 +144,7 @@ class WorldQuestSelect(discord.ui.Select):
         for opt in self.options:
             opt.default = opt.value in self.values
         await interaction.response.edit_message(view=self.view)
-        await self.view.send_status(
-            interaction,
-            f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}",
-        )
+        await self.view.send_status(interaction, self.view.build_status_text())
 
 
 # ----------------- MODALS -----------------
@@ -179,7 +170,7 @@ class CharacterAscensionModal(discord.ui.Modal, title="Character Ascension"):
             cart_item = f"Char: {self.char_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
+            await self.cart_view.send_status(interaction, self.cart_view.build_status_text())
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -206,7 +197,7 @@ class WeaponUpgradeModal(discord.ui.Modal, title="Weapon Upgrade"):
             cart_item = f"Weapon: {self.weapon_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
+            await self.cart_view.send_status(interaction, self.cart_view.build_status_text())
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -233,7 +224,7 @@ class ArtifactBuildingModal(discord.ui.Modal, title="Artifact Building"):
             cart_item = f"Artifact: {self.slot_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
+            await self.cart_view.send_status(interaction, self.cart_view.build_status_text())
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -262,7 +253,7 @@ class TalentBuildingModal(discord.ui.Modal, title="Talent Building"):
             cart_item = f"Talent: {self.char_name.value} - {self.talent_name.value} (Lv.{curr} ➡️ Lv.{targ}) - ${price:.2f}"
             self.cart_view.custom_maintenance.append(cart_item)
             self.cart_view.total_custom_price += price
-            await self.cart_view.send_status(interaction, f"✅ Added: **{cart_item}**")
+            await self.cart_view.send_status(interaction, self.cart_view.build_status_text())
         except ValueError:
             await interaction.response.send_message("⚠️ Enter valid numbers!", ephemeral=True)
 
@@ -446,6 +437,81 @@ class ThreadManagementView(discord.ui.View):
         await interaction.response.send_modal(modal)
 
 
+# ----------------- CONFIRMATION VIEWS -----------------
+class CancelConfirmView(discord.ui.View):
+    """Shown ephemerally when the user clicks Cancel, so a stray click
+    doesn't wipe out their whole cart. On confirm, cleans up every trace of
+    the order: the main cart panel and the shared status message."""
+
+    def __init__(self, order_view: "OrderView"):
+        super().__init__(timeout=60)
+        self.order_view = order_view
+
+    @discord.ui.button(label="Yes, Cancel Order", style=discord.ButtonStyle.red, emoji="✖️")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        ov = self.order_view
+
+        if ov.message:
+            try:
+                await ov.message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+        if ov.status_message:
+            try:
+                await ov.status_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+        if ov.on_close:
+            ov.on_close()
+
+        try:
+            await interaction.delete_original_response()
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+    @discord.ui.button(label="No, Keep Editing", style=discord.ButtonStyle.secondary, emoji="↩️")
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.edit_message(
+                content="👍 Order kept — keep customizing it below.", view=None
+            )
+        except discord.HTTPException:
+            pass
+
+
+class SubmitConfirmView(discord.ui.View):
+    """The receipt screen shown before an order is actually placed, so the
+    user can double check everything before it creates a thread / job post."""
+
+    def __init__(self, order_view: "OrderView", summary: str, total_price: float):
+        super().__init__(timeout=120)
+        self.order_view = order_view
+        self.summary = summary
+        self.total_price = total_price
+
+    @discord.ui.button(label="Confirm & Submit", style=discord.ButtonStyle.green, emoji="✅")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        await self.order_view.finalize_order(interaction, self.summary, self.total_price)
+        try:
+            await interaction.delete_original_response()
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+    @discord.ui.button(label="Back / Cancel", style=discord.ButtonStyle.secondary, emoji="↩️")
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.response.edit_message(
+                content="❌ Submission cancelled. Keep editing your order below, then hit Submit again when ready.",
+                view=None,
+            )
+        except discord.HTTPException:
+            pass
+
+
 # ----------------- MAIN CART / ORDER VIEW -----------------
 class OrderView(discord.ui.View):
     def __init__(self, is_edit=False, job_message=None, summary_message=None, 
@@ -494,6 +560,25 @@ class OrderView(discord.ui.View):
                 await interaction.response.send_message("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
         except discord.HTTPException:
             pass
+
+    def build_status_text(self):
+        """Render the full current selection state (not just the latest change),
+        so the single status message always shows everything picked so far
+        instead of the newest change overwriting the previous ones."""
+        lines = ["🧾 **Current Selections**"]
+        lines.append(
+            f"🗺️ Normal Exploration: {', '.join(self.selected_exploration) if self.selected_exploration else 'None'}"
+        )
+        lines.append(
+            f"🧭 Special Areas: {', '.join(self.selected_special) if self.selected_special else 'None'}"
+        )
+        lines.append(
+            f"📜 World Quests: {', '.join(self.selected_world_quests) if self.selected_world_quests else 'None'}"
+        )
+        lines.append(
+            f"🛠️ Upgrades: {', '.join(self.custom_maintenance) if self.custom_maintenance else 'None'}"
+        )
+        return "\n".join(lines)
 
     async def send_status(self, interaction: discord.Interaction, content: str):
         """Show `content` as a single ephemeral status message that gets edited
@@ -591,6 +676,11 @@ class OrderView(discord.ui.View):
             child.disabled = True
         if self.on_close:
             self.on_close()
+        if self.status_message:
+            try:
+                await self.status_message.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -615,7 +705,7 @@ class OrderView(discord.ui.View):
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
-        await self.send_status(interaction, "✅ Upgrades cleared.")
+        await self.send_status(interaction, self.build_status_text())
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, emoji="✅", row=4)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -650,6 +740,16 @@ class OrderView(discord.ui.View):
             )
         summary += "\n💳 *Please coordinate payment with management here before piloting begins.*"
 
+        receipt = "🧾 **Order Receipt — Please Review Before Confirming**\n" + summary
+        await interaction.followup.send(
+            content=receipt,
+            view=SubmitConfirmView(self, summary, total_price),
+            ephemeral=True,
+        )
+
+    async def finalize_order(self, interaction: discord.Interaction, summary: str, total_price: float):
+        """Actually places the order (creates/updates the thread + job post).
+        Only called after the user confirms the receipt in SubmitConfirmView."""
         try:
             if self.is_edit:
                 new_thread_view = ThreadManagementView(
@@ -702,6 +802,11 @@ class OrderView(discord.ui.View):
                     try:
                         await self.message.delete()
                     except discord.NotFound:
+                        pass
+                if self.status_message:
+                    try:
+                        await self.status_message.delete()
+                    except (discord.NotFound, discord.HTTPException):
                         pass
                 return
 
@@ -756,6 +861,18 @@ class OrderView(discord.ui.View):
             if self.on_close:
                 self.on_close()
 
+            # Clean up the cart panel and status message now that the order lives in its own thread.
+            if self.message:
+                try:
+                    await self.message.delete()
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+            if self.status_message:
+                try:
+                    await self.status_message.delete()
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+
             await interaction.followup.send(
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
                 ephemeral=True,
@@ -765,10 +882,8 @@ class OrderView(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="✖️", row=4)
     async def cancel_order(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
-        if self.on_close:
-            self.on_close()
-        try:
-            await interaction.message.delete()
-        except discord.NotFound:
-            pass
+        await interaction.response.send_message(
+            "⚠️ Are you sure you want to cancel this order? All your selections will be discarded and this won't be recoverable.",
+            view=CancelConfirmView(self),
+            ephemeral=True,
+        )
