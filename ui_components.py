@@ -61,21 +61,22 @@ def extract_price(item_str):
 class ExplorationSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
+        # Alphabetized by region name (each region's standard + >50% option kept together)
         options = [
-            discord.SelectOption(label="Mondstadt", description="$10.00", emoji="🍃", value="Mondstadt ($10)"),
-            discord.SelectOption(label="Mondstadt (>50% Exploration)", description="$6.50", emoji="🍃", value="Mondstadt (>50%) ($6.50)"),
-            discord.SelectOption(label="Liyue", description="$15.00", emoji="🔶", value="Liyue ($15)"),
-            discord.SelectOption(label="Liyue (>50% Exploration)", description="$9.75", emoji="🔶", value="Liyue (>50%) ($9.75)"),
-            discord.SelectOption(label="Inazuma", description="$25.00", emoji="⚡", value="Inazuma ($25)"),
-            discord.SelectOption(label="Inazuma (>50% Exploration)", description="$16.25", emoji="⚡", value="Inazuma (>50%) ($16.25)"),
-            discord.SelectOption(label="Sumeru (Forest & Desert)", description="$90.00", emoji="🌿", value="Sumeru ($90)"),
-            discord.SelectOption(label="Sumeru (>50% Exploration)", description="$58.50", emoji="🌿", value="Sumeru (>50%) ($58.50)"),
             discord.SelectOption(label="Fontaine", description="$40.00", emoji="💧", value="Fontaine ($40)"),
             discord.SelectOption(label="Fontaine (>50% Exploration)", description="$26.00", emoji="💧", value="Fontaine (>50%) ($26.00)"),
+            discord.SelectOption(label="Inazuma", description="$25.00", emoji="⚡", value="Inazuma ($25)"),
+            discord.SelectOption(label="Inazuma (>50% Exploration)", description="$16.25", emoji="⚡", value="Inazuma (>50%) ($16.25)"),
+            discord.SelectOption(label="Liyue", description="$15.00", emoji="🔶", value="Liyue ($15)"),
+            discord.SelectOption(label="Liyue (>50% Exploration)", description="$9.75", emoji="🔶", value="Liyue (>50%) ($9.75)"),
+            discord.SelectOption(label="Mondstadt", description="$10.00", emoji="🍃", value="Mondstadt ($10)"),
+            discord.SelectOption(label="Mondstadt (>50% Exploration)", description="$6.50", emoji="🍃", value="Mondstadt (>50%) ($6.50)"),
             discord.SelectOption(label="Natlan", description="$45.00", emoji="🔥", value="Natlan ($45)"),
             discord.SelectOption(label="Natlan (>50% Exploration)", description="$29.25", emoji="🔥", value="Natlan (>50%) ($29.25)"),
             discord.SelectOption(label="Nod Krai", description="$45.00", emoji="🌌", value="Nod Krai ($45)"), # Update this price if needed
             discord.SelectOption(label="Nod Krai (>50% Exploration)", description="$29.25", emoji="🌌", value="Nod Krai (>50%) ($29.25)"),
+            discord.SelectOption(label="Sumeru (Forest & Desert)", description="$90.00", emoji="🌿", value="Sumeru ($90)"),
+            discord.SelectOption(label="Sumeru (>50% Exploration)", description="$58.50", emoji="🌿", value="Sumeru (>50%) ($58.50)"),
         ]
         for opt in options:
             if opt.value in default_values:
@@ -90,32 +91,35 @@ class ExplorationSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        text = f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}"
-        await self.view.update_status_message(interaction, text)
+        await interaction.followup.send(
+            f"Updated normal exploration choices: {', '.join(self.values) if self.values else 'None'}",
+            ephemeral=True,
+        )
 
 
 class SpecialAreaSelect(discord.ui.Select):
     def __init__(self, default_values=None):
         default_values = default_values or []
+        # Alphabetized by area name (each area's standard + >50% option kept together)
         options = [
-            discord.SelectOption(label="Dragonspine", description="$8.00", emoji="🏔️", value="Dragonspine ($8)"),
-            discord.SelectOption(label="Dragonspine (>50% Exploration)", description="$5.20", emoji="🏔️", value="Dragonspine (>50%) ($5.20)"),
-            discord.SelectOption(label="Windrest Peak", description="$10.00", emoji="⛰️", value="Windrest Peak ($10)"),
-            discord.SelectOption(label="Windrest Peak (>50% Exploration)", description="$6.50", emoji="⛰️", value="Windrest Peak (>50%) ($6.50)"),
-            discord.SelectOption(label="Temple of Space", description="$10.00", emoji="🏛️", value="Temple of Space ($10)"),
-            discord.SelectOption(label="Temple of Space (>50% Exploration)", description="$6.50", emoji="🏛️", value="Temple of Space (>50%) ($6.50)"),
+            discord.SelectOption(label="Ancient Sacred Mountain", description="$13.00", emoji="🌋", value="Ancient Sacred Mountain ($13)"),
+            discord.SelectOption(label="Ancient Sacred Mountain (>50% Exploration)", description="$8.45", emoji="🌋", value="Ancient Sacred Mountain (>50%) ($8.45)"),
             discord.SelectOption(label="Chasm (with underground)", description="$13.00", emoji="🕳️", value="Chasm ($13)"),
             discord.SelectOption(label="Chasm (>50% Exploration)", description="$8.45", emoji="🕳️", value="Chasm (>50%) ($8.45)"),
             discord.SelectOption(label="Chenyu Vale", description="$13.00", emoji="🍵", value="Chenyu Vale ($13)"),
             discord.SelectOption(label="Chenyu Vale (>50% Exploration)", description="$8.45", emoji="🍵", value="Chenyu Vale (>50%) ($8.45)"),
+            discord.SelectOption(label="Dragonspine", description="$8.00", emoji="🏔️", value="Dragonspine ($8)"),
+            discord.SelectOption(label="Dragonspine (>50% Exploration)", description="$5.20", emoji="🏔️", value="Dragonspine (>50%) ($5.20)"),
             discord.SelectOption(label="Enkanomiya", description="$15.00", emoji="💠", value="Enkanomiya ($15)"),
             discord.SelectOption(label="Enkanomiya (>50% Exploration)", description="$9.75", emoji="💠", value="Enkanomiya (>50%) ($9.75)"),
-            discord.SelectOption(label="Sea of Bygone Eras", description="$13.00", emoji="🐚", value="Sea of Bygone Eras ($13)"),
-            discord.SelectOption(label="Sea of Bygone Eras (>50% Exploration)", description="$8.45", emoji="🐚", value="Sea of Bygone Eras (>50%) ($8.45)"),
-            discord.SelectOption(label="Ancient Sacred Mountain", description="$13.00", emoji="🌋", value="Ancient Sacred Mountain ($13)"),
-            discord.SelectOption(label="Ancient Sacred Mountain (>50% Exploration)", description="$8.45", emoji="🌋", value="Ancient Sacred Mountain (>50%) ($8.45)"),
             discord.SelectOption(label="Frost Moon", description="$13.00", emoji="🌕", value="Frost Moon ($13)"),
             discord.SelectOption(label="Frost Moon (>50% Exploration)", description="$8.45", emoji="🌕", value="Frost Moon (>50%) ($8.45)"),
+            discord.SelectOption(label="Sea of Bygone Eras", description="$13.00", emoji="🐚", value="Sea of Bygone Eras ($13)"),
+            discord.SelectOption(label="Sea of Bygone Eras (>50% Exploration)", description="$8.45", emoji="🐚", value="Sea of Bygone Eras (>50%) ($8.45)"),
+            discord.SelectOption(label="Temple of Space", description="$10.00", emoji="🏛️", value="Temple of Space ($10)"),
+            discord.SelectOption(label="Temple of Space (>50% Exploration)", description="$6.50", emoji="🏛️", value="Temple of Space (>50%) ($6.50)"),
+            discord.SelectOption(label="Windrest Peak", description="$10.00", emoji="⛰️", value="Windrest Peak ($10)"),
+            discord.SelectOption(label="Windrest Peak (>50% Exploration)", description="$6.50", emoji="⛰️", value="Windrest Peak (>50%) ($6.50)"),
         ]
         for opt in options:
             if opt.value in default_values:
@@ -130,8 +134,10 @@ class SpecialAreaSelect(discord.ui.Select):
             opt.default = opt.value in self.values
         self.view.update_world_quest_dropdown()
         await interaction.response.edit_message(view=self.view)
-        text = f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}"
-        await self.view.update_status_message(interaction, text)
+        await interaction.followup.send(
+            f"Updated special area choices: {', '.join(self.values) if self.values else 'None'}",
+            ephemeral=True,
+        )
 
 
 class WorldQuestSelect(discord.ui.Select):
@@ -144,8 +150,7 @@ class WorldQuestSelect(discord.ui.Select):
         for opt in self.options:
             opt.default = opt.value in self.values
         await interaction.response.edit_message(view=self.view)
-        text = f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}"
-        await self.view.update_status_message(interaction, text)
+        await interaction.followup.send(f"Updated World Quests: {', '.join(self.values) if self.values else 'None'}", ephemeral=True)
 
 
 # ----------------- MODALS -----------------
@@ -449,8 +454,7 @@ class OrderView(discord.ui.View):
         self.on_close = on_close  # Optional callback to free tracking entries (e.g. active_order_messages)
         self.summary_message = summary_message
         self.message = None
-        self.status_message = None  # Tracks the single reusable ephemeral "Updated..." confirmation
-
+        
         self.selected_exploration = initial_expl or []
         self.selected_special = initial_special or []
         self.selected_world_quests = initial_wq or []
@@ -483,30 +487,6 @@ class OrderView(discord.ui.View):
                 await interaction.response.send_message("⚠️ Something went wrong processing that. Please try again.", ephemeral=True)
         except discord.HTTPException:
             pass
-
-    async def update_status_message(self, interaction: discord.Interaction, text: str):
-        """Edit the existing ephemeral status message instead of sending a new
-        one every time a dropdown changes. Falls back to sending a fresh one
-        if the old one no longer exists (e.g. the user dismissed it)."""
-        if self.status_message:
-            try:
-                await self.status_message.edit(content=text)
-                return
-            except discord.NotFound:
-                self.status_message = None
-        self.status_message = await interaction.followup.send(text, ephemeral=True)
-
-    async def clear_status_message(self):
-        """Deletes the tracked ephemeral status message, if any. Used when the
-        cart is cancelled/submitted/timed out so it doesn't linger."""
-        if self.status_message:
-            try:
-                await self.status_message.delete()
-            except discord.NotFound:
-                pass
-            except discord.HTTPException:
-                pass
-            self.status_message = None
 
     def update_world_quest_dropdown(self):
         # Preserve the order regions were picked in each dropdown so quests group
@@ -582,7 +562,6 @@ class OrderView(discord.ui.View):
             child.disabled = True
         if self.on_close:
             self.on_close()
-        await self.clear_status_message()
         if self.message:
             try:
                 await self.message.edit(content="⏱️ **Order session timed out.** Please type `!order` again.", view=self)
@@ -607,8 +586,7 @@ class OrderView(discord.ui.View):
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
-        await interaction.response.defer(ephemeral=True)
-        await self.update_status_message(interaction, "✅ Upgrades cleared.")
+        await interaction.response.send_message("✅ Upgrades cleared.", ephemeral=True)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, emoji="✅", row=4)
     async def submit_order(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -690,7 +668,6 @@ class OrderView(discord.ui.View):
                     )
                     await self.job_message.edit(content=job_board_msg)
 
-                await self.clear_status_message()
                 await interaction.followup.send("✅ Your order has been successfully updated!", ephemeral=True)
                 if self.message:
                     try:
@@ -750,7 +727,6 @@ class OrderView(discord.ui.View):
             if self.on_close:
                 self.on_close()
 
-            await self.clear_status_message()
             await interaction.followup.send(
                 f"✅ Your order has been submitted! Head over to your private thread {ticket_thread.mention} to finalize your payment of **${total_price:.2f}** with management.",
                 ephemeral=True,
@@ -763,7 +739,6 @@ class OrderView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         if self.on_close:
             self.on_close()
-        await self.clear_status_message()
         try:
             await interaction.message.delete()
         except discord.NotFound:
