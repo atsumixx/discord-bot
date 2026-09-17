@@ -771,29 +771,16 @@ class OrderView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="✖️", row=3)
+    @discord.ui.button(label="Clear Exploration", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
     async def clear_exploration(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.selected_exploration = []
+        self.selected_special = []
+        self.selected_world_quests = []
         for opt in self.exploration_select.options:
             opt.default = False
-        self.update_world_quest_dropdown()
-        await interaction.response.edit_message(view=self)
-        await self.send_status(interaction, self.build_status_text())
-
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="✖️", row=3)
-    async def clear_special(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.selected_special = []
         for opt in self.special_select.options:
             opt.default = False
         self.update_world_quest_dropdown()
-        await interaction.response.edit_message(view=self)
-        await self.send_status(interaction, self.build_status_text())
-
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="✖️", row=3)
-    async def clear_world_quests(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.selected_world_quests = []
-        for opt in self.wq_select.options:
-            opt.default = False
         await interaction.response.edit_message(view=self)
         await self.send_status(interaction, self.build_status_text())
 
@@ -817,7 +804,7 @@ class OrderView(discord.ui.View):
         self.upgrade_picker_message = await interaction.original_response()
         picker_view.message = self.upgrade_picker_message
 
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="✖️", row=4)
+    @discord.ui.button(label="Clear Upgrades", style=discord.ButtonStyle.danger, emoji="🗑️", row=4)
     async def clear_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.custom_maintenance = []
         self.total_custom_price = 0.0
