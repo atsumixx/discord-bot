@@ -1,7 +1,6 @@
 import discord
 import re
 import asyncio
-from earnings_store import record_commission, extract_total_from_summary, extract_pilot_from_job_message
 
 # ----------------- DYNAMIC WORLD QUEST DATA -----------------
 # Maps base regions to their specific World Quests
@@ -334,9 +333,6 @@ class ClientFeedbackModal(discord.ui.Modal, title="Commission Feedback & Review"
             client_avatar = client_user.display_avatar.url
 
             await webhook.send(content=self.feedback.value, username=client_name, avatar_url=client_avatar)
-            total_price = extract_total_from_summary(self.summary_text)
-            pilot_name = extract_pilot_from_job_message(self.job_message)
-            record_commission(client_name=client_name, pilot_name=pilot_name, total_price=total_price)
             clean_summary = self.summary_text.replace("\n💳 *Please coordinate payment with management here before piloting begins.*", "")
 
             embed = discord.Embed(
@@ -999,3 +995,4 @@ class OrderView(discord.ui.View):
             ephemeral=True,
         )
         confirm_view.message = await interaction.original_response()
+
