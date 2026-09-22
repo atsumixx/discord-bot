@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from ui_components import OrderView
+from admin_components import AdminLoginView
 
 # ----------------- DISCORD BOT SETUP -----------------
 intents = discord.Intents.default()
@@ -162,6 +163,26 @@ async def help(ctx):
     embed.set_footer(text="Atsumi Piloting Services • Type !order to begin!")
     
     await ctx.send(embed=embed)
+
+
+@bot.command()
+async def admin(ctx):
+    try:
+        await ctx.message.delete()
+    except discord.Forbidden:
+        pass
+
+    view = AdminLoginView()
+    try:
+        await ctx.author.send(
+            "🔐 **Admin Access**\nClick below to log in and view pilot earnings.",
+            view=view,
+        )
+    except discord.Forbidden:
+        await ctx.send(
+            f"{ctx.author.mention} I couldn't DM you the admin login — enable DMs from server members and try again.",
+            delete_after=10,
+        )
 
 
 @bot.command()
