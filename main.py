@@ -214,7 +214,10 @@ async def order(ctx):
 # ----------------- RUN EVERYTHING -----------------
 if __name__ == "__main__":
     TOKEN = os.getenv("DISCORD_TOKEN")
+    if not TOKEN and os.path.exists("token.txt"):
+        with open("token.txt", "r", encoding="utf-8") as f:
+            TOKEN = f.read().strip()
     if TOKEN:
         bot.run(TOKEN)
     else:
-        print("ERROR: DISCORD_TOKEN environment variable not found!")
+        print("ERROR: no DISCORD_TOKEN env var or token.txt found!")
