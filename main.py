@@ -5,18 +5,18 @@ from ui_components import OrderView
 from admin_components import AdminLoginView
 
 # ----------------- DISCORD BOT SETUP -----------------
-intents = discord.Intents.default()
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.members = True        # Required for on_member_join; enable Server Members Intent in the portal.
 intents.message_content = True
-intents.members = True        # Required for on_member_join to fire (welcome DM).
-                               # Must also be enabled as "Server Members Intent"
-                               # in the Discord Developer Portal for this bot.
-intents.presences = False     # Presence updates are pure overhead here
 
 bot = commands.Bot(
     command_prefix="!",
     intents=intents,
-    max_messages=100,          # Default is 1000 cached messages; we never read history
-    chunk_guilds_at_startup=False,  # Skip building the full member cache on boot
+    max_messages=None,
+    chunk_guilds_at_startup=False,
+    member_cache_flags=discord.MemberCacheFlags.none(),
 )
 
 # Remove the default help command to use our custom one
@@ -26,6 +26,17 @@ bot.remove_command('help')
 active_order_messages = {}
 
 # ----------------- BOT COMMANDS -----------------
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def mem(ctx):
+    with open("/proc/self/status") as status_file:
+        for line in status_file:
+            if line.startswith("VmRSS"):
+                mb = int(line.split()[1]) / 1024
+                await ctx.send(f"Memory: {mb:.1f} MB", delete_after=15)
+                break
+
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
